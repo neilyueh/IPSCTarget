@@ -123,6 +123,8 @@ tr.latest td { background: color-mix(in srgb, var(--last) 12%, transparent); }
   <label class="status">
     <select id="power"><option value="minor">Minor</option><option value="major">Major</option></select>
   </label>
+  <button id="drillBtn" title="清除所有靶機，隨機 3～6 秒後嗶一聲開始計時；每台靶機都打中兩發後停止，2 秒後念出時間（說「重來」也一樣）">⏱ 開始</button>
+  <span class="status" id="drillText" style="font-weight:700;font-size:16px;color:var(--ink);font-variant-numeric:tabular-nums"></span>
   <button id="voiceBtn" title="打開後網頁持續聆聽，說「重來」就清除所有靶機和電腦紀錄（需要麥克風；Chrome 會把語音送到 Google 辨識）">🎤 語音</button>
   <span class="status" id="voiceText"></span>
   <button id="simBtn" title="打開後，在網頁的靶圖上點一下就當成中了一發（只在網頁上模擬，不會傳到靶機）">🖱 模擬射擊</button>
@@ -487,10 +489,11 @@ function addShot(t, e) {
   const arr = performance.now();
   const last = lastShotOverall();
   const idle = parseFloat($('idleSec').value) || 10;
-  if (last && $('autoClear').checked && (arr - last.arr) / 1000 > idle) clearAllRecords(false);
+  if (last && drill.phase === 'idle' && $('autoClear').checked && (arr - last.arr) / 1000 > idle) clearAllRecords(false);
   const { zone, ns, paper } = classify(gx, gy, t.zoom, t.kind);
   t.shots.push({ dt, arr, x, y, gx, gy, zone, ns, paper, kind: t.kind, tid: t.id, sim: !!e.sim });
   beep(ns ? 'NS' : zone);
+  drillCheck(arr);
   renderTarget(t); renderSummary();
 }
 function lastShotOverall() {
@@ -500,6 +503,7 @@ function lastShotOverall() {
 }
 function clearTarget(t) { t.shots = []; renderTarget(t); }
 function clearAllRecords(doRender = true) {
+  drillCancel();
   for (const t of targets) t.shots = [];
   if (doRender) renderAll();
 }
@@ -802,12 +806,14 @@ function renderSummary() {
   $('sumRows').innerHTML = rows.join('');
 
   const all = orderedShots();
-  const time = all.reduce((a, s) => a + (s.split || 0), 0);
+  const timed = drill.phase === 'done' ? drill.time : null;   // beep → last required hit
+  const time = timed != null ? timed : all.reduce((a, s) => a + (s.split || 0), 0);
   const total = Math.max(0, tot.score);
   $('totCount').textContent = tot.count;
   $('totScore').textContent = total;
-  $('totTime').textContent = all.length > 1 ? time.toFixed(2) + 's' : '–';
-  $('totHF').textContent = all.length > 1 && time > 0 ? (total / time).toFixed(2) : '–';
+  const hasTime = timed != null || all.length > 1;
+  $('totTime').textContent = hasTime ? time.toFixed(2) + 's' : '–';
+  $('totHF').textContent = hasTime && time > 0 ? (total / time).toFixed(2) : '–';
 
   const byId = Object.fromEntries(targets.map(t => [t.id, t]));
   const perTargetIndex = {};
@@ -1026,6 +1032,75 @@ const savedPower = load('ipsc.power'); if (savedPower) $('power').value = savedP
 $('mode').addEventListener('change', () => { store('ipsc.mode', $('mode').value); renderAll(); });
 $('power').addEventListener('change', () => { store('ipsc.power', $('power').value); renderAll(); });
 $('clear').addEventListener('click', () => clearAllRecords());
+// ---------- Start beep and timer ----------
+// 重來 / ⏱ 開始: clear every target, wait a random 3–6 s, beep, then time until
+// every target has two hits (A/C/D on scored targets, any hit on the others).
+// Two seconds after that the time is spoken, to two decimals.
+const drill = { phase: 'idle', beepAt: 0, time: null, ids: [], waitTimer: null, sayTimer: null, tick: null };
+
+function ensureAudio() {
+  try {
+    audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+  } catch (e) {}
+}
+function startBeep() {
+  try {
+    ensureAudio();
+    const o = audioCtx.createOscillator(), g = audioCtx.createGain(), t0 = audioCtx.currentTime;
+    o.type = 'square'; o.frequency.value = 2400;
+    g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(0.5, t0 + 0.01);
+    g.gain.setValueAtTime(0.5, t0 + 0.4); g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.45);
+    o.connect(g); g.connect(audioCtx.destination); o.start(t0); o.stop(t0 + 0.46);
+  } catch (e) {}
+}
+function speak(text) {
+  try {
+    const u = new SpeechSynthesisUtterance(text);
+    u.lang = 'zh-TW'; u.rate = 1;
+    speechSynthesis.cancel(); speechSynthesis.speak(u);
+  } catch (e) {}
+}
+const drillShow = text => { $('drillText').textContent = text; };
+
+function drillCancel() {
+  clearTimeout(drill.waitTimer); clearTimeout(drill.sayTimer); clearInterval(drill.tick);
+  drill.phase = 'idle'; drill.time = null;
+  drillShow('');
+}
+async function drillStart() {
+  ensureAudio();
+  await clearEverything();          // clears every target (Bluetooth) and the records; cancels any run
+  const delay = 3000 + Math.random() * 3000;
+  drill.phase = 'waiting';
+  drillShow('⏱ 準備…');
+  drill.waitTimer = setTimeout(() => {
+    startBeep();
+    drill.beepAt = performance.now();
+    drill.phase = 'running';
+    const live = targets.filter(t => t.on);
+    drill.ids = (live.length ? live : targets).map(t => t.id);
+    drill.tick = setInterval(() => drillShow(`⏱ ${((performance.now() - drill.beepAt) / 1000).toFixed(2)} 秒`), 50);
+  }, delay);
+}
+function drillCheck(at) {
+  if (drill.phase !== 'running') return;
+  const done = drill.ids.every(id => {
+    const t = targets.find(x => x.id === id);
+    if (!t) return true;
+    const scored = !!KINDS[TARGET_SEQ[t.kind]];
+    return t.shots.filter(s => s.arr >= drill.beepAt && (!scored || 'ACD'.includes(s.zone))).length >= 2;
+  });
+  if (!done) return;
+  const time = (at - drill.beepAt) / 1000;
+  drill.phase = 'done'; drill.time = time;
+  clearInterval(drill.tick);
+  drillShow(`⏱ ${time.toFixed(2)} 秒`);
+  drill.sayTimer = setTimeout(() => speak(`時間 ${time.toFixed(2)} 秒`), 2000);
+}
+$('drillBtn').addEventListener('click', () => drillStart());
+window.__drill = drill;   // test hook
+
 // ---------- Voice command ----------
 // Chrome's built-in speech recognition (sent to Google's servers by Chrome). It listens
 // continuously in Mandarin and restarts itself when Chrome stops it; saying one of the
@@ -1042,8 +1117,8 @@ function onVoiceText(text, isFinal) {
   const now = Date.now();
   if (now - voiceLast < VOICE_COOLDOWN) return false;
   voiceLast = now;
-  toast('聽到「重來」：清除所有紀錄，重新開始');
-  clearEverything();
+  toast('聽到「重來」：清除所有紀錄，準備嗶聲');
+  drillStart();
   return true;
 }
 function startVoice() {
@@ -1081,6 +1156,7 @@ function stopVoice() {
   $('voiceBtn').classList.remove('on'); voiceSay('');
 }
 $('voiceBtn').addEventListener('click', () => {
+  ensureAudio();   // a click lets the page play the start beep later
   if (voiceOn) { stopVoice(); toast('已關閉語音指令'); return; }
   voiceOn = true;
   if (!startVoice()) { stopVoice(); return; }

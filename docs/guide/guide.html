@@ -33,6 +33,7 @@ ol.steps { padding-left: 6mm; margin: 2mm 0 4mm; break-inside: avoid; }
 ol.steps li { margin-bottom: 1.5mm; }
 ul { break-inside: avoid; }
 .pb { break-before: page; }
+table.tight td, table.tight th { padding-top: 1mm; padding-bottom: 1mm; line-height: 1.5; }
 .tip, .warn { border-radius: 2mm; padding: 3mm 4mm; margin: 3mm 0 4mm; break-inside: avoid; }
 .tip { background: #eef4ff; border-left: 4px solid var(--blue); }
 .warn { background: #fff3ef; border-left: 4px solid var(--accent); }
@@ -85,22 +86,24 @@ ul { break-inside: avoid; }
 
 <h2 class="pb">3. 畫面總覽</h2>
 <figure>
-  <img src="img/overview.png" alt="" style="width:88%;margin:0 auto">
+  <img src="img/overview.png" alt="" style="width:76%;margin:0 auto">
   <figcaption>三台靶機（左、中、右）同時使用的畫面，藍色數字對應下表</figcaption>
 </figure>
-<table style="break-inside:auto;font-size:9.5pt">
+<table class="tight" style="break-inside:auto;font-size:9.5pt">
   <tr><th style="width:9mm"></th><th style="width:30%">項目</th><th>用途</th></tr>
   <tr><td><span class="n">1</span></td><td>連線狀態</td><td>「已連線 3/3 台」表示全部連上（網路／Wi-Fi）。綠點＝全部正常，紅點＝有靶機沒連上（會自動重連）。</td></tr>
   <tr><td><span class="n">2</span></td><td>搜尋靶機</td><td>在同網段重新尋找靶機，找到新的會自動加入。打開網頁時也會在背景自動搜尋一次。</td></tr>
   <tr><td><span class="n">3</span></td><td>計分方式</td><td>練習／比賽、Minor／Major，詳見第 6 節。</td></tr>
-  <tr><td><span class="n">4</span></td><td>🖱 模擬射擊</td><td>打開後在網頁靶圖上點一下就算中一發，用來不開槍測試，詳見第 8 節。</td></tr>
-  <tr><td><span class="n">5</span></td><td>只清電腦紀錄</td><td>只清空網頁上的紀錄，<b>靶機上的彈痕不會消失</b>。</td></tr>
-  <tr><td><span class="n">6</span></td><td>全部清除</td><td>用藍牙清除每一台已連藍牙的靶機，並清空網頁紀錄。</td></tr>
-  <tr><td><span class="n">7</span></td><td>靶卡</td><td>每台靶機一張，顯示彈孔位置與按鈕，詳見第 4 節。</td></tr>
-  <tr><td><span class="n">8</span></td><td>全場統計</td><td>總彈數、總分、時間、Hit Factor。</td></tr>
-  <tr><td><span class="n">9</span></td><td>成績總表</td><td>每台的彈數、A／C／D／Miss／NS、分數，以及合計。</td></tr>
-  <tr><td><span class="n">10</span></td><td>射擊順序</td><td>依時間列出每一發，詳見第 6 節。</td></tr>
-  <tr><td><span class="n">11</span></td><td>設定</td><td>手動加入 IP、自動開新一輪、RESET 連動、提示音。</td></tr>
+  <tr><td><span class="n">4</span></td><td>⏱ 開始</td><td>清除所有靶機，隨機 3～6 秒後嗶聲開始計時，每台中兩發後念出時間，詳見第 9 節。</td></tr>
+  <tr><td><span class="n">5</span></td><td>🎤 語音</td><td>打開後說「重來」，等於按「⏱ 開始」，詳見第 9 節。</td></tr>
+  <tr><td><span class="n">6</span></td><td>🖱 模擬射擊</td><td>打開後在網頁靶圖上點一下就算中一發，用來不開槍測試，詳見第 8 節。</td></tr>
+  <tr><td><span class="n">7</span></td><td>只清電腦紀錄</td><td>只清空網頁上的紀錄，<b>靶機上的彈痕不會消失</b>。</td></tr>
+  <tr><td><span class="n">8</span></td><td>全部清除</td><td>用藍牙清除每一台已連藍牙的靶機，並清空網頁紀錄。</td></tr>
+  <tr><td><span class="n">9</span></td><td>靶卡</td><td>每台靶機一張，顯示彈孔位置與按鈕，詳見第 4 節。</td></tr>
+  <tr><td><span class="n">10</span></td><td>全場統計</td><td>總彈數、總分、時間、Hit Factor。</td></tr>
+  <tr><td><span class="n">11</span></td><td>成績總表</td><td>每台的彈數、A／C／D／Miss／NS、分數，以及合計。</td></tr>
+  <tr><td><span class="n">12</span></td><td>射擊順序</td><td>依時間列出每一發，詳見第 6 節。</td></tr>
+  <tr><td><span class="n">13</span></td><td>設定</td><td>手動加入 IP、自動開新一輪、RESET 連動、提示音。</td></tr>
 </table>
 
 <h2 class="pb">4. 靶卡</h2>
@@ -129,7 +132,7 @@ ul { break-inside: avoid; }
       <tr><th style="width:34%">按鈕</th><th>說明</th></tr>
       <tr><td><span class="key">1.0x</span></td><td>縮放，要和這台靶機畫面下方的 Zoom 一樣。</td></tr>
       <tr><td><span class="key">⤢</span></td><td>放大這張靶並顯示靶清單（再按一次縮回）。</td></tr>
-      <tr><td><span class="key">藍牙</span></td><td>連接這台的藍牙（第 9 節）。下方文字顯示藍牙狀態與「指令成功 ✓」。</td></tr>
+      <tr><td><span class="key">藍牙</span></td><td>連接這台的藍牙（第 10 節）。下方文字顯示藍牙狀態與「指令成功 ✓」。</td></tr>
       <tr><td><span class="key">◎ 清除</span></td><td>清除這一台的彈痕與紀錄（需藍牙）。</td></tr>
       <tr><td><span class="key">⌂</span></td><td>靶機回主選單（需藍牙）；網頁會把靶設成「靶心」。</td></tr>
       <tr><td><span class="key">進靶畫面</span></td><td>從主選單進入練習畫面（需藍牙），開機後使用，見第 2 節。</td></tr>
@@ -189,7 +192,7 @@ ul { break-inside: avoid; }
       <tr><td style="width:30%"><b>成績總表</b></td><td>多了 NS 欄（打到人質的發數）。</td></tr>
       <tr><td><b>總彈數</b></td><td>所有靶機加起來的發數。</td></tr>
       <tr><td><b>總分</b></td><td>所有靶機分數的總和（最低 0）。</td></tr>
-      <tr><td><b>時間</b></td><td>第一發到最後一發的時間。</td></tr>
+      <tr><td><b>時間</b></td><td>用「⏱ 開始」時是嗶聲到每台中兩發的時間；否則是第一發到最後一發。</td></tr>
       <tr><td><b>Hit Factor</b></td><td>總分 ÷ 時間。</td></tr>
     </table>
     <h3>射擊順序</h3>
@@ -208,7 +211,7 @@ ul { break-inside: avoid; }
   <tr><td>遮蔽區</td><td>0 分；比賽模式不算有效命中。</td></tr>
   <tr><td><span class="zone-M">人質（NS）</span></td><td>每發扣 10 分，練習、比賽都算。</td></tr>
 </table>
-<div class="warn"><b>時間不含起始嗶聲</b>網頁收不到計時器的起始訊號，「時間」是從第一發算到最後一發，不含拔槍和第一發的反應時間，所以 Hit Factor 會比正式比賽偏高，僅供練習參考。換到另一台靶機的那一發，分段也會有一點網路延遲誤差。</div>
+<div class="warn"><b>要計入拔槍時間請用「⏱ 開始」</b>沒用「⏱ 開始」時，「時間」是從第一發算到最後一發，不含拔槍和第一發的反應時間，Hit Factor 會偏高。用「⏱ 開始」或說「重來」時，從嗶聲開始計時（第 9 節）。換到另一台靶機的那一發，分段也會有一點網路延遲誤差。</div>
 
 <h2>7. 清除彈痕的方式</h2>
 <figure>
@@ -221,6 +224,7 @@ ul { break-inside: avoid; }
   <tr><td>手機 App 按 RESET</td><td>✓ 那一台</td><td>✓ 那一台</td><td></td></tr>
   <tr><td>靶卡上的 <span class="key">◎ 清除</span></td><td>✓ 那一台</td><td>✓ 那一台</td><td>需要藍牙</td></tr>
   <tr><td>上方 <span class="key" style="background:var(--accent);color:#fff;border-color:var(--accent)">全部清除</span></td><td>✓ 已連藍牙的</td><td>✓ 全部</td><td>沒連藍牙的會提示幾台沒清到</td></tr>
+  <tr><td><span class="key">⏱ 開始</span>、說「<b>重來</b>」</td><td>✓ 已連藍牙的</td><td>✓ 全部</td><td>清除後開始嗶聲計時，見第 9 節</td></tr>
   <tr><td><span class="key">只清電腦紀錄</span>、鍵盤 <span class="key">C</span> 或 <span class="key">空白鍵</span></td><td>✗</td><td>✓ 全部</td><td></td></tr>
 </table>
 <p>在右下設定勾選「<b>任一台 RESET 就全部清除</b>」，對任何一台 RESET 開槍時，網頁上所有靶機的紀錄都會清空（其他靶機上的彈痕仍要各自清除）。</p>
@@ -236,7 +240,37 @@ ul { break-inside: avoid; }
 </table>
 <div class="warn"><b>只在網頁上模擬</b>模擬的發不會傳到靶機，靶機螢幕上不會出現彈孔。網頁也沒有辦法讓靶機本身產生一發命中（命中只來自靶機內部的感測器）。模擬的發和真的命中混在一起時分段會不準，測完先按「只清電腦紀錄」再正式打。</div>
 
-<h2>9. 藍牙遙控</h2>
+<h2>9. 嗶聲計時與語音「重來」</h2>
+<p>網頁可以當計時器用：按上方的 <span class="key">⏱ 開始</span>，或打開語音後說「<b>重來</b>」，就會開始一輪計時射擊，不用回到電腦。</p>
+<table>
+  <tr><th style="width:9mm"></th><th style="width:30%">流程</th><th>說明</th></tr>
+  <tr><td><span class="n">1</span></td><td>清除</td><td>和「全部清除」一樣：用藍牙清除每台靶機的彈痕，清空網頁紀錄。上方顯示「⏱ 準備…」。</td></tr>
+  <tr><td><span class="n">2</span></td><td>隨機 3～6 秒後「嗶」</td><td>電腦喇叭發出一聲嗶，開始計時，上方即時顯示秒數。嗶聲前開的槍不算入計時。</td></tr>
+  <tr><td><span class="n">3</span></td><td>每台都中兩發就停止</td><td><b>每一台靶機都打中兩發</b>的那一刻停止。計分的靶要打在 A／C／D（人質、遮蔽、Miss 不算）；不計分的靶任何命中都算。</td></tr>
+  <tr><td><span class="n">4</span></td><td>2 秒後念出時間</td><td>用語音念出「時間 3.52 秒」（小數後兩位）。上方和「時間」欄都顯示這個時間，Hit Factor 也改用它計算。</td></tr>
+</table>
+<p>計時中按「只清電腦紀錄」或「全部清除」會取消這一輪。嗶聲和念時間都由<b>電腦喇叭</b>播放，靶機本身不會嗶，喇叭音量要開大一點。</p>
+<h3>語音「重來」</h3>
+<figure>
+  <img src="img/voice.png" alt="">
+  <figcaption>① 語音開關（綠色＝聆聽中） ② 最後聽到的字 ③ 計時狀態（準備中，等嗶聲） ④ 聽到「重來」後的提示，紀錄已全部清空</figcaption>
+</figure>
+<ol class="steps">
+  <li>先照第 2 節連好<b>網路</b>和<b>藍牙</b>（要清到靶機上的彈痕，每台都要連藍牙）。</li>
+  <li>按上方的 <span class="key">🎤 語音</span>，按鈕變<b style="color:#1f8a4c">綠色</b>。第一次 Chrome 會詢問麥克風權限，請按「允許」。</li>
+  <li>旁邊顯示「🎤 聆聽中…說『重來』」，之後會顯示最後聽到的字，可以用來確認有沒有聽清楚。</li>
+  <li>說「<b>重來</b>」：效果和按 <span class="key">⏱ 開始</span> 一樣——清除所有靶機，隨機 3～6 秒後嗶聲開始計時（見上表）。</li>
+  <li>再按一次 <span class="key">🎤 語音</span> 關閉。</li>
+</ol>
+<table>
+  <tr><th style="width:34%">項目</th><th>說明</th></tr>
+  <tr><td>聽得懂的說法</td><td>「重來」「重新開始」「重新來」「重來一次」（句子裡含有就算，例如「好，重來」）</td></tr>
+  <tr><td>防止誤觸</td><td>3 秒內重複說只算一次</td></tr>
+  <tr><td>沒連藍牙的靶機</td><td>只清網頁紀錄，提示會說幾台沒清到</td></tr>
+</table>
+<div class="warn"><b>使用前要知道</b>語音辨識用的是 Chrome／Edge 內建功能，<b>聲音會由瀏覽器送到 Google 辨識，電腦要能上網</b>。槍聲或吵雜環境可能聽錯，先試幾次，看上方顯示的字是否正確。如果直接開檔案時 Chrome 不讓用麥克風，在終端機執行 <code>python3 -m http.server</code>，改開 <code>http://localhost:8000/monitor/</code>。</div>
+
+<h2>10. 藍牙遙控</h2>
 <ol class="steps">
   <li>按靶卡上的 <span class="key">藍牙</span>（或直接按任一控制鍵）。</li>
   <li>瀏覽器會跳出裝置清單，選<b>這張靶卡對應的</b> <b>GR-WOLF ET …</b>（名稱後面的數字是靶機編號）。</li>
@@ -249,12 +283,12 @@ ul { break-inside: avoid; }
   <tr><td><span class="key">◎ 清除</span></td><td>練習畫面：清除彈痕（RESET）；主選單：確認選取</td></tr>
   <tr><td><span class="key">⌂</span></td><td>回主選單</td></tr>
   <tr><td><span class="key">進靶畫面</span></td><td>回主選單 → 1.5 秒後確認，進入練習畫面（從靶心開始）</td></tr>
-  <tr><td>上方 <span class="key" style="background:var(--accent);color:#fff;border-color:var(--accent)">全部清除</span></td><td>對每台已連藍牙的靶機送出清除</td></tr>
+  <tr><td>上方 <span class="key" style="background:var(--accent);color:#fff;border-color:var(--accent)">全部清除</span>、語音「重來」</td><td>對每台已連藍牙的靶機送出清除</td></tr>
 </table>
 <div class="tip"><b>每次重新整理網頁後</b>藍牙要再選一次裝置（瀏覽器的安全限制）。網頁看不到靶機的名稱，所以有多台時，請自己對照靶機編號選對。</div>
 
 
-<h2>10. 多台靶機</h2>
+<h2>11. 多台靶機</h2>
 <figure>
   <img src="img/six.png" alt="">
   <figcaption>六台靶機：一排三張，往下捲動看第二排；右側成績固定在畫面上</figcaption>
@@ -267,7 +301,7 @@ ul { break-inside: avoid; }
   <li><b>移除</b>：按靶卡上的 <span class="key">✕</span>。</li>
 </ul>
 
-<h2>11. 常見問題</h2>
+<h2>12. 常見問題</h2>
 <table>
   <tr><th style="width:36%">狀況</th><th>處理方式</th></tr>
   <tr><td>左上角是紅點、顯示「已連線 0/1 台」</td><td>確認靶機已開機、和電腦在同一個 Wi-Fi；按「搜尋靶機」。若靶機換了 IP，搜尋會自動找到新的。</td></tr>
@@ -278,6 +312,7 @@ ul { break-inside: avoid; }
   <tr><td>「全部清除」後有靶機沒清到</td><td>那台沒有連藍牙。按該靶卡的「藍牙」連上後再試。</td></tr>
   <tr><td>開機後怎麼進 IPSC 紙靶？</td><td>照第 2 節：等網路綠點 → 連藍牙 → 按「進靶畫面」→ 按 ▶ 一次。靶機無法開機就直接進紙靶。</td></tr>
   <tr><td>按「進靶畫面」後靶機進到別的畫面</td><td>主選單的反白不在練習畫面那一項。回主選單把反白移到練習畫面，再按一次「進靶畫面」。</td></tr>
+  <tr><td>說「重來」沒反應</td><td>確認 <span class="key">🎤 語音</span> 是綠色、旁邊有顯示聽到的字；電腦要能上網；Chrome 要允許麥克風（網址列旁的麥克風圖示）。仍不行時改用 <code>http://localhost:8000/monitor/</code> 開網頁。</td></tr>
   <tr><td>按 ◀ ▶ 或「進靶畫面」靶機沒反應</td><td>藍牙沒連上：看靶卡下方是否顯示「藍牙已連接」，沒有就按「藍牙」重新連。</td></tr>
 </table>
 
