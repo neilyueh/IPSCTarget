@@ -39,7 +39,26 @@ main { display: grid; grid-template-columns: minmax(0, 1fr) 400px; gap: 16px; pa
 .card { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 12px; }
 .tcard { display: flex; flex-direction: column; gap: 8px; }
 .tcard.wide { grid-column: 1 / -1; }
-.tcard.wide .tsvg { height: 78vh; }
+.tcard.wide .tsvg, .tcard.wide .strip { height: 78vh; }
+.tbody { display: flex; gap: 10px; align-items: stretch; }
+.tbody .tsvg { flex: 1; min-width: 0; }
+.strip { display: none; flex-direction: column; gap: 6px; width: 190px; flex: none; height: var(--th);
+  overflow-y: auto; padding: 2px 4px 2px 2px; }
+.grid.solo .strip, .tcard.wide .strip { display: flex; }
+.strip .it { display: flex; gap: 8px; align-items: center; padding: 4px; border: 3px solid transparent;
+  border-radius: 8px; cursor: pointer; background: var(--bg); }
+.strip .it:hover { border-color: var(--line); }
+.strip .it img { height: 96px; width: 54px; border-radius: 4px; flex: none; }
+.strip .lab { font-size: 12px; line-height: 1.35; }
+.strip .tag { display: block; font-weight: 700; margin-top: 2px; }
+.strip .it.cur { border-color: var(--ok); } .strip .it.cur .tag { color: var(--ok); }
+.strip .it.prev { border-color: #3b82f6; } .strip .it.prev .tag { color: #3b82f6; }
+.strip .it.next { border-color: #f59e0b; } .strip .it.next .tag { color: #f59e0b; }
+.kindrow img.mini { height: 52px; width: 29px; border-radius: 3px; cursor: pointer; flex: none; }
+.kindrow img.mini[data-act=prev] { outline: 2px solid #3b82f6; }
+.kindrow img.mini[data-act=next] { outline: 2px solid #f59e0b; }
+.grid.solo .kindrow img.mini, .tcard.wide .kindrow img.mini { display: none; }
+.tcard.moving .strip, .tcard.moving .kindrow button { opacity: .5; pointer-events: none; }
 .thead { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
 .thead input.name { font-weight: 700; font-size: 16px; border-color: transparent; background: transparent;
   padding: 4px 6px; width: 8em; min-width: 0; }
@@ -537,7 +556,7 @@ const ART = {
 const IMG = window.TARGET_IMAGES || null;   // from target-images.js
 let clipSeq = 0;
 
-function drawTargetSvg(svg, z, kind) {
+function drawTargetSvg(svg, z, kind, noUi) {
   const name = TARGET_SEQ[kind];
   const zx = x => CX + (x - CX) * z, zy = y => CY + (y - CY) * z;
   const image = (key, cx, cy, sx, sy) => {
@@ -586,18 +605,34 @@ function drawTargetSvg(svg, z, kind) {
     html += `<text x="360" y="620" text-anchor="middle" font-size="44" fill="#c9ccd4">${SEQ_LABEL[name]}</text>` +
       `<text x="360" y="680" text-anchor="middle" font-size="28" fill="#9aa0ab">（缺少 target-images.js，無法畫出靶圖）</text>`;
   }
-  for (const b of Object.values(UI_BUTTONS)) {
+  if (!noUi) for (const b of Object.values(UI_BUTTONS)) {
     html += `<rect x="${b.x0}" y="${b.y0}" width="${b.x1 - b.x0}" height="${b.y1 - b.y0}" rx="12" fill="none" stroke="#e0452b" stroke-opacity=".55" stroke-width="3" stroke-dasharray="8 6"/>`;
   }
   svg.innerHTML = `<defs><clipPath id="${clipId}"><rect width="720" height="1280"/></clipPath></defs>` +
     `<g clip-path="url(#${clipId})">${html}<g class="holes"></g></g>`;
 }
 
+// Small pictures of each target for the target list: drawn once as an SVG image
+// and reused everywhere (an <img> pointing at a blob URL).
+const thumbCache = {};
+function thumbUrl(kind) {
+  if (thumbCache[kind]) return thumbCache[kind];
+  const svg = document.createElementNS(svgNS, 'svg');
+  svg.setAttribute('xmlns', svgNS); svg.setAttribute('viewBox', '0 0 720 1280');
+  svg.setAttribute('width', '180'); svg.setAttribute('height', '320');
+  drawTargetSvg(svg, 1, kind, true);
+  const blob = new Blob([new XMLSerializer().serializeToString(svg)], { type: 'image/svg+xml' });
+  return (thumbCache[kind] = URL.createObjectURL(blob));
+}
+const prevKind = k => (k + TARGET_SEQ.length - 1) % TARGET_SEQ.length;
+const nextKind = k => (k + 1) % TARGET_SEQ.length;
+
 function buildCards() {
   const grid = $('grid'); grid.innerHTML = '';
   const cols = Math.min(Math.max(targets.length, 1), 3);
   grid.style.setProperty('--cols', cols);
   grid.classList.toggle('many', cols === 3);
+  grid.classList.toggle('solo', targets.length === 1);
   document.documentElement.style.setProperty('--th', targets.length <= 1 ? 'calc(100vh - 270px)' : targets.length === 2 ? '60vh' : '46vh');
   if (!targets.length) {
     grid.innerHTML = '<div class="card empty">還沒有靶機。按上方「搜尋靶機」，或在右下手動加入 IP。</div>';
@@ -617,7 +652,9 @@ function buildCards() {
       </div>
       <div class="kindrow">
         <button data-act="prev" title="上一個靶（有連藍牙時靶機一起換）">◀</button>
+        <img class="mini" data-act="prev" alt="" title="按 ◀ 會換到這張">
         <span class="kindname"></span>
+        <img class="mini" data-act="next" alt="" title="按 ▶ 會換到這張">
         <button data-act="next" title="下一個靶（有連藍牙時靶機一起換）">▶</button>
         <button class="small" data-act="cal" title="靶機畫面和這裡不一樣時，用來校正（不會送指令給靶機）">校正</button>
         <select class="small cal" hidden title="選靶機目前畫面上的靶">
@@ -625,7 +662,12 @@ function buildCards() {
         </select>
       </div>
       <div class="note" hidden title="點一下關閉"></div>
-      <svg class="tsvg" viewBox="0 0 720 1280" xmlns="http://www.w3.org/2000/svg"></svg>
+      <div class="tbody">
+        <svg class="tsvg" viewBox="0 0 720 1280" xmlns="http://www.w3.org/2000/svg"></svg>
+        <div class="strip" title="點一下切換到那張靶">
+          ${TARGET_SEQ.map((n, k) => `<div class="it" data-k="${k}"><img alt="" src="${IMG ? thumbUrl(k) : ''}"><div class="lab">${k + 1}. ${SEQ_LABEL[n]}<span class="tag"></span></div></div>`).join('')}
+        </div>
+      </div>
       <div class="ble">
         <select class="small zoom" title="要和這台靶機畫面的 Zoom 一致">
           <option value="1">1.0x</option><option value="0.7">0.7x</option><option value="0.5">0.5x</option>
@@ -656,10 +698,11 @@ function buildCards() {
     });
     el.querySelector('.note').addEventListener('click', () => { t.note = ''; updateKindUi(t); });
     el.querySelectorAll('[data-dir]').forEach(b => b.addEventListener('click', () => sendDirective(t, b.dataset.dir)));
-    el.querySelector('[data-act=prev]').addEventListener('click', () => stepKind(t, 'left'));
-    el.querySelector('[data-act=next]').addEventListener('click', () => stepKind(t, 'right'));
+    el.querySelectorAll('[data-act=prev]').forEach(b => b.addEventListener('click', () => stepKind(t, 'left')));
+    el.querySelectorAll('[data-act=next]').forEach(b => b.addEventListener('click', () => stepKind(t, 'right')));
+    el.querySelectorAll('.strip .it').forEach(it => it.addEventListener('click', () => goToKind(t, Number(it.dataset.k))));
     el.querySelector('[data-act=ble]').addEventListener('click', () => bleConnect(t));
-    el.querySelector('[data-act=wide]').addEventListener('click', () => { t.wide = !t.wide; el.classList.toggle('wide', t.wide); });
+    el.querySelector('[data-act=wide]').addEventListener('click', () => { t.wide = !t.wide; el.classList.toggle('wide', t.wide); updateKindUi(t); });
     el.querySelector('[data-act=remove]').addEventListener('click', () => { removeTarget(t); toast(`已移除 ${t.name}`); });
     grid.appendChild(el);
     updateCardStatus(t); updateKindUi(t); renderTarget(t);
@@ -673,6 +716,19 @@ function updateKindUi(t) {
     (KINDS[name] ? '' : '・只顯示命中，不計分') + '</span>';
   const note = t.el.querySelector('.note');
   note.textContent = t.note; note.hidden = !t.note;
+  const prev = prevKind(t.kind), next = nextKind(t.kind);
+  t.el.classList.toggle('moving', !!t.moving);
+  t.el.querySelectorAll('.strip .it').forEach((it, k) => {
+    it.classList.toggle('cur', k === t.kind); it.classList.toggle('prev', k === prev); it.classList.toggle('next', k === next);
+    it.querySelector('.tag').textContent = k === t.kind ? '目前' : k === prev ? '◀ 上一張' : k === next ? '▶ 下一張' : '';
+  });
+  const strip = t.el.querySelector('.strip'), cur = strip.children[t.kind];
+  if (strip.offsetParent) strip.scrollTo({ top: cur.offsetTop - strip.clientHeight / 2 + cur.offsetHeight / 2, behavior: 'smooth' });
+  if (IMG) {
+    const [pm, nm] = t.el.querySelectorAll('img.mini');
+    pm.src = thumbUrl(prev); pm.title = `按 ◀ 會換到「${SEQ_LABEL[TARGET_SEQ[prev]]}」`;
+    nm.src = thumbUrl(next); nm.title = `按 ▶ 會換到「${SEQ_LABEL[TARGET_SEQ[next]]}」`;
+  }
 }
 
 function updateCardStatus(t) {
@@ -892,9 +948,33 @@ async function sendDirective(t, dir, quiet) {
 // Card ◀ ▶: with Bluetooth the target steps too and the page follows its broadcast;
 // without Bluetooth only the page changes.
 async function stepKind(t, dir) {
+  if (t.moving) return;
   if (t.bleChar) { await sendDirective(t, dir); return; }
   setKind(t, t.kind + (dir === 'right' ? 1 : -1));
   toast(`${t.name}：網頁換成「${SEQ_LABEL[TARGET_SEQ[t.kind]]}」（未連藍牙，靶機請自己切換）`);
+}
+
+// Target list click: with Bluetooth, press ◀ or ▶ on the target as many times as
+// needed (shortest way round); without it, only the page changes.
+async function goToKind(t, want) {
+  if (t.moving || want === t.kind) return;
+  if (!t.bleChar) {
+    setKind(t, want);
+    toast(`${t.name}：網頁換成「${SEQ_LABEL[TARGET_SEQ[want]]}」（未連藍牙，靶機請自己切換）`);
+    return;
+  }
+  const n = TARGET_SEQ.length, fwd = (want - t.kind + n) % n;
+  const dir = fwd <= n - fwd ? 'right' : 'left';
+  let steps = Math.min(fwd, n - fwd);
+  t.moving = true; updateKindUi(t);
+  toast(`${t.name}：切換到「${SEQ_LABEL[TARGET_SEQ[want]]}」，需按 ${steps} 次 ${dir === 'right' ? '▶' : '◀'}…`);
+  while (steps > 0) {
+    if (!(await sendDirective(t, dir, true))) break;
+    steps--;
+    if (steps) await sleep(650);   // the game ignores the same command again within 0.5 s
+  }
+  t.moving = false; updateKindUi(t);
+  toast(steps ? `${t.name}：切換中斷，請確認靶機畫面` : `${t.name}：已切換到「${SEQ_LABEL[TARGET_SEQ[t.kind]]}」`);
 }
 
 async function clearEverything() {
