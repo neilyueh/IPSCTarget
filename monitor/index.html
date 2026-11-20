@@ -1169,12 +1169,17 @@ function drillCheck(at) {
   const time = (at - drill.beepAt) / 1000;
   drill.phase = 'done'; drill.time = time;
   clearInterval(drill.tick);
-  drillShow(`⏱ ${time.toFixed(2)} 秒`);
-  toast(`時間 ${time.toFixed(2)} 秒`);
-  drill.sayTimer = setTimeout(() => speak(`時間 ${time.toFixed(2)} 秒`), 2000);
+  // A / C / D hits after the beep, all targets of the run together
+  const n = { A: 0, C: 0, D: 0 };
+  for (const id of drill.ids) { const t = targets.find(x => x.id === id); if (t) for (const s of t.shots) if (s.arr >= drill.beepAt && s.zone in n) n[s.zone]++; }
+  drill.counts = n;
+  drill.say = `時間 ${time.toFixed(2)} 秒，A ${n.A} 發，C ${n.C} 發，D ${n.D} 發`;
+  drillShow(`⏱ ${time.toFixed(2)} 秒 · A ${n.A} · C ${n.C} · D ${n.D}`);
+  toast(drill.say);
+  drill.sayTimer = setTimeout(() => speak(drill.say), 2000);
 }
 $('drillBtn').addEventListener('click', () => drillStart());
-$('drillText').addEventListener('click', () => { if (drill.phase === 'done') speak(`時間 ${drill.time.toFixed(2)} 秒`); });
+$('drillText').addEventListener('click', () => { if (drill.phase === 'done') speak(drill.say); });
 $('drillText').title = '計時結束後點一下可以再念一次';
 $('drillText').style.cursor = 'pointer';
 window.__drill = drill;   // test hook
