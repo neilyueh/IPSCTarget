@@ -696,6 +696,7 @@ function buildCards() {
         <button class="small" data-act="ble" title="連接這台的藍牙">藍牙</button>
         <button class="small" data-dir="enter" title="清除（RESET）">◎ 清除</button>
         <button class="small" data-dir="homepage" title="回主選單">⌂</button>
+        <button class="small" data-act="enterTarget" title="從主選單進入靶畫面：送出 homepage 後 enter（需藍牙）">進靶畫面</button>
         <button class="small" data-act="remove" title="從清單移除">✕</button>
         <span class="bstat"></span>
       </div>`;
@@ -722,6 +723,7 @@ function buildCards() {
     el.querySelectorAll('[data-act=next]').forEach(b => b.addEventListener('click', () => stepKind(t, 'right')));
     el.querySelectorAll('.strip .it').forEach(it => it.addEventListener('click', () => goToKind(t, Number(it.dataset.k))));
     el.querySelector('[data-act=ble]').addEventListener('click', () => bleConnect(t));
+    el.querySelector('[data-act=enterTarget]').addEventListener('click', () => enterTargetScreen(t));
     el.querySelector('[data-act=wide]').addEventListener('click', () => { t.wide = !t.wide; el.classList.toggle('wide', t.wide); updateKindUi(t); });
     el.querySelector('[data-act=remove]').addEventListener('click', () => { removeTarget(t); toast(`已移除 ${t.name}`); });
     el.querySelector('.tsvg').addEventListener('click', ev => simulateShot(t, ev));
@@ -996,6 +998,15 @@ async function goToKind(t, want) {
   }
   t.moving = false; updateKindUi(t);
   toast(steps ? `${t.name}：切換中斷，請確認靶機畫面` : `${t.name}：已切換到「${SEQ_LABEL[TARGET_SEQ[t.kind]]}」`);
+}
+
+async function enterTargetScreen(t) {
+  toast(`${t.name}：嘗試從主選單進入靶畫面…`);
+  const h = await sendDirective(t, 'homepage', true);
+  if (!h) { toast(`${t.name}：無法送出 homepage（請確認藍牙）`); return; }
+  await sleep(1500);
+  const e = await sendDirective(t, 'enter', true);
+  toast(e ? `${t.name}：已送出進入指令（請看靶機螢幕確認）` : `${t.name}：無法送出 enter（請確認藍牙）`);
 }
 
 async function clearEverything() {
