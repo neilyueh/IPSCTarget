@@ -141,7 +141,7 @@ tr.latest td { background: color-mix(in srgb, var(--last) 12%, transparent); }
       <p class="hint">
         <b>清除</b>：「全部清除」透過藍牙清每台已連接的靶機並清空電腦紀錄；靶卡下方的 ◎ 只清那一台。對靶上的 RESET 開一槍或用手機 App 按 RESET，對應那台的紀錄也會自動清空。<br>
         <b>計分</b>：Miss 扣 10 分；打在黑色遮蔽區 0 分（表格算在 Miss 欄）；打到人質每發扣 10 分（穿過人質又打到靶，兩者都算）。比賽模式每張靶取最佳 2 發，不足 2 發算 Miss。時間是第一發到最後一發（不含起始嗶聲）。<br>
-        <b>換靶</b>：靶卡上方的 ◀ ▶ 依靶機順序切換全部 17 種靶，畫面和靶機一樣；有連藍牙時靶機一起換。在靶機或手機 App 換靶，網頁也會跟著換；對不上時按「校正」。計分只支援 IPSC 紙靶、Hard cover 1、2、人質靶，其他靶只顯示命中位置。<br>
+        <b>換靶</b>：靶卡上方的 ◀ ▶ 依靶機順序切換全部 17 種靶，畫面和靶機一樣；有連藍牙時靶機一起換。在靶機或手機 App 換靶，網頁也會跟著換；對不上時按「校正」。計分只支援 IPSC 紙靶、Hard cover 1、2、人質靶、IPSC 雙靶，其他靶只顯示命中位置。<br>
         每台的「縮放」要和該靶機畫面的 Zoom 一致，A/C/D 判定才會準。
       </p>
     </div>
@@ -159,7 +159,7 @@ const SEQ_LABEL = { bullseye: '靶心', ipsc_mini: 'IPSC 紙靶', ipsc_mini_blac
   '3paddles': '3 個 Paddle', uspsa: 'USPSA', idpa: 'IDPA', idpa_ns: 'IDPA NS', idpa_hard_cover_1: 'IDPA 硬遮蔽 1',
   idpa_hard_cover_2: 'IDPA 硬遮蔽 2', mozambique: 'Mozambique', custom_target: '自訂靶',
   dueling_tree_composite: '決鬥樹', texas_start_composite: '德州星' };
-const SUPPORTED = [1, 2, 3, 4];          // the four IPSC paper targets the page scores
+const SUPPORTED = [1, 2, 3, 4, 5];       // the IPSC paper targets the page scores
 const DEFAULT_KIND = 1;                  // ipsc_mini
 const shift = (poly, dx, dy) => poly.map(([x, y]) => [x + dx, y + dy]);
 
@@ -193,6 +193,13 @@ const KINDS = {
     return { scale: 1, A, C, D, hc, ns: null,
       layers: [[hc[0], 'hc'], [D, 'paper'], [C, 'paper'], [A, 'dash']],
       labels: [['A', -20, -250], ['C', -190, -40], ['D', -320, 0], ['遮蔽', 230, 120, 'hc']] };
+  })(),
+  ipsc_mini_double: (() => {
+    const front = { A: shift(IPSC_A, 0, 380), C: shift(IPSC_C, 0, 380), D: shift(IPSC_D, 0, 380), label: '下' };
+    const back = { A: IPSC_A, C: IPSC_C, D: IPSC_D, label: '上' };
+    return { scale: 1, sets: [front, back], hc: [], ns: null,
+      layers: [[IPSC_D, 'paper'], [IPSC_C, 'dash'], [IPSC_A, 'dash'], [front.D, 'paper'], [front.C, 'dash'], [front.A, 'dash']],
+      labels: [] };
   })(),
   hostage: (() => {
     const A = [[42,-452],[145.56,-138.89],[-146.67,-140],[-42,-452]];
@@ -236,19 +243,23 @@ function inPoly(x, y, poly) {
   }
   return inside;
 }
-// Returns { zone, ns }: zone is A / C / D / M (miss) / HC (hard cover) / NS (only the
-// hostage was hit) / X (a target type this page does not score); ns = hostage was hit.
-// Same priority as the target: A > C > D, then hard cover; a hostage hit is added on top.
+// Returns { zone, ns, paper }: zone is A / C / D / M (miss) / HC (hard cover) / NS (only
+// the hostage was hit) / X (a target type this page does not score); ns = hostage was hit;
+// paper = which paper of a multi-paper target was hit. Same priority as the target:
+// papers in order (IPSC double: the lower one in front first), A > C > D, then hard cover.
 function classify(gx, gy, z, kind) {
   const K = KINDS[TARGET_SEQ[kind]];
-  if (!K) return { zone: 'X', ns: false };
+  if (!K) return { zone: 'X', ns: false, paper: 0 };
   const s = z * K.scale, lx = (gx - CX) / s, ly = (gy - CY) / s;
-  let zone = 'M';
-  for (const k of ['A', 'C', 'D']) if (inPoly(lx, ly, K[k])) { zone = k; break; }
+  let zone = 'M', paper = 0;
+  const sets = K.sets || [K];
+  outer: for (let i = 0; i < sets.length; i++) {
+    for (const k of ['A', 'C', 'D']) if (inPoly(lx, ly, sets[i][k])) { zone = k; paper = i; break outer; }
+  }
   if (zone === 'M' && K.hc.some(p => inPoly(lx, ly, p))) zone = 'HC';
   const ns = !!(K.ns && inPoly(lx, ly, K.ns));
   if (ns && zone === 'M') zone = 'NS';
-  return { zone, ns };
+  return { zone, ns, paper };
 }
 const toScreen = (x, y) => [x * 720 / SENSOR_W, 1280 - y * 1280 / SENSOR_H];
 
@@ -435,8 +446,8 @@ function addShot(t, e) {
   const last = lastShotOverall();
   const idle = parseFloat($('idleSec').value) || 10;
   if (last && $('autoClear').checked && (arr - last.arr) / 1000 > idle) clearAllRecords(false);
-  const { zone, ns } = classify(gx, gy, t.zoom, t.kind);
-  t.shots.push({ dt, arr, x, y, gx, gy, zone, ns, tid: t.id });
+  const { zone, ns, paper } = classify(gx, gy, t.zoom, t.kind);
+  t.shots.push({ dt, arr, x, y, gx, gy, zone, ns, paper, kind: t.kind, tid: t.id });
   beep(ns ? 'NS' : zone);
   renderTarget(t); renderSummary();
 }
@@ -481,16 +492,23 @@ function scoreTarget(t) {
   const scored = !!KINDS[TARGET_SEQ[t.kind]];
   if ($('mode').value === 'match') {
     if (!scored) return { n, count: t.shots.length, misses: 0, nsHits, score: 0 };
-    const best = t.shots.filter(s => 'ACD'.includes(s.zone)).map(s => p[s.zone]).sort((a, b) => b - a).slice(0, 2);
-    const misses = 2 - best.length;
-    return { n, count: t.shots.length, misses, nsHits,
-      score: best.reduce((a, b) => a + b, 0) - MISS_PENALTY * (misses + nsHits) };
+    const papers = (KINDS[TARGET_SEQ[t.kind]].sets || [0]).length;
+    let total = 0, misses = 0;
+    for (let i = 0; i < papers; i++) {
+      const best = t.shots.filter(s => (s.paper || 0) === i && 'ACD'.includes(s.zone)).map(s => p[s.zone]).sort((a, b) => b - a).slice(0, 2);
+      total += best.reduce((a, b) => a + b, 0); misses += 2 - best.length;
+    }
+    return { n, count: t.shots.length, misses, nsHits, score: total - MISS_PENALTY * (misses + nsHits) };
   }
   const score = n.A * p.A + n.C * p.C + n.D * p.D - MISS_PENALTY * (n.M + nsHits);
   return { n, count: t.shots.length, misses: n.M + n.HC, nsHits, score };
 }
 const ZONE_TEXT = { A: 'A', C: 'C', D: 'D', M: 'Miss', HC: '遮蔽', NS: '人質', X: '—' };
-const zoneText = s => ZONE_TEXT[s.zone] + (s.ns && s.zone !== 'NS' ? '+人質' : '');
+const zoneText = s => {
+  const K = KINDS[TARGET_SEQ[s.kind]];
+  const which = K && K.sets && 'ACD'.includes(s.zone) ? `（${K.sets[s.paper || 0].label}）` : '';
+  return ZONE_TEXT[s.zone] + which + (s.ns && s.zone !== 'NS' ? '+人質' : '');
+};
 const zoneClass = s => 'zone-' + ('ACD'.includes(s.zone) ? s.zone : s.zone === 'X' ? 'X' : 'M');
 
 // ---------- Rendering ----------
