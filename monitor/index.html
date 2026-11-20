@@ -49,7 +49,9 @@ main { display: grid; grid-template-columns: minmax(0, 1fr) 400px; gap: 16px; pa
 .small { font-size: 12px; padding: 4px 8px; }
 .tsvg { width: 100%; height: var(--th); display: block; }
 .kindrow { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
-.kindrow select.kind { font-weight: 600; flex: 1; min-width: 0; }
+.kindrow .kindname { flex: 1; min-width: 0; text-align: center; font-size: 15px; }
+.kindrow .kindname .ip { display: block; }
+.note { cursor: pointer; }
 .note { font-size: 12px; color: var(--m); background: color-mix(in srgb, var(--m) 10%, transparent); border-radius: 6px; padding: 6px 8px; }
 .zone-X { color: var(--muted); }
 .ble { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
@@ -139,12 +141,13 @@ tr.latest td { background: color-mix(in srgb, var(--last) 12%, transparent); }
       <p class="hint">
         <b>清除</b>：「全部清除」透過藍牙清每台已連接的靶機並清空電腦紀錄；靶卡下方的 ◎ 只清那一台。對靶上的 RESET 開一槍或用手機 App 按 RESET，對應那台的紀錄也會自動清空。<br>
         <b>計分</b>：Miss 扣 10 分；打在黑色遮蔽區 0 分（表格算在 Miss 欄）；打到人質每發扣 10 分（穿過人質又打到靶，兩者都算）。比賽模式每張靶取最佳 2 發，不足 2 發算 Miss。時間是第一發到最後一發（不含起始嗶聲）。<br>
-        <b>選靶</b>：靶卡上的選單可選 IPSC 紙靶、Hard cover 1、Hard cover 2、人質靶；連藍牙時靶機會跟著切換。在靶機或手機 App 換靶，網頁也會跟著換；對不上時按「校正」。<br>
+        <b>換靶</b>：靶卡上方的 ◀ ▶ 依靶機順序切換全部 17 種靶，畫面和靶機一樣；有連藍牙時靶機一起換。在靶機或手機 App 換靶，網頁也會跟著換；對不上時按「校正」。計分只支援 IPSC 紙靶、Hard cover 1、2、人質靶，其他靶只顯示命中位置。<br>
         每台的「縮放」要和該靶機畫面的 Zoom 一致，A/C/D 判定才會準。
       </p>
     </div>
   </div>
 </main>
+<script src="target-images.js"></script>
 <script>
 // ---------- Target geometry (zone polygons from the target's own scenes) ----------
 // Order of targets in the target's practice (bootcamp) screen; ◀ ▶ step through it.
@@ -270,7 +273,7 @@ let nextId = 1;
 function makeTarget({ ip, name, zoom, kind }) {
   return { id: nextId++, ip, name: name || `靶 ${targets.length + 1}`, zoom: Number(zoom) || 1,
     kind: Number.isInteger(kind) && kind >= 0 && kind < TARGET_SEQ.length ? kind : DEFAULT_KIND,
-    note: '', lastDir: {}, echo: [], moving: false,
+    note: '', lastDir: {}, pending: [], moving: false,
     ws: null, on: false, gen: 0, retry: 2000, timer: null,
     shots: [], seen: new Set(), lastBtn: 0,
     bleDevice: null, bleChar: null, bleText: '藍牙未連接', wide: false, el: null };
@@ -312,7 +315,7 @@ function applyDirective(t, dir) {
   if (dir === 'left') setKind(t, t.kind - 1);
   else if (dir === 'right') setKind(t, t.kind + 1);
   else if (dir === 'homepage' || dir === 'back')
-    setKind(t, 0, '靶機回到主選單；重新進入練習畫面時會是「靶心」，請在上方選單選回紙靶');
+    setKind(t, 0, '靶機回到主選單；重新進入練習畫面時會是「靶心」');
 }
 
 function addTarget(ip, name) {
@@ -361,6 +364,12 @@ async function connectTarget(t) {
     return;
   }
   t.retry = 2000; t.ws = sock; setOn(t, true);
+  // The target cannot tell us which target it shows; ask once per page load.
+  if (!t.confirmed) {
+    t.confirmed = true;
+    t.note = `請確認靶機畫面上是「${SEQ_LABEL[TARGET_SEQ[t.kind]]}」；不一樣就按「校正」選靶機上的靶（一樣的話點這裡關閉）`;
+    updateKindUi(t);
+  }
   sock.onerror = null;
   sock.onmessage = ev => {
     let m; try { m = JSON.parse(ev.data); } catch (e) { return; }
@@ -376,20 +385,30 @@ async function connectTarget(t) {
 function handleMessage(t, m) {
   if (!m) return;
   if (m.type === 'control') {
+    // Every command the game receives (phone app or our own Bluetooth) is broadcast
+    // here, so this is the single place where the page follows the target.
     const dir = m.directive;
     const msg = { enter: '按了 RESET', left: '切換靶', right: '切換靶', homepage: '回到主選單', back: '回到主選單' }[dir];
     if (!msg) return;
-    // Our own Bluetooth commands come back on the WebSocket too; skip those echoes.
-    const now = Date.now();
-    const i = t.echo.findIndex(e => e.dir === dir && e.until > now);
-    if (i >= 0) { t.echo.splice(i, 1); return; }
-    if (!takeDirective(t, dir)) return;
-    if (dir === 'enter') { targetCleared(t, `${t.name}：手機 App 按了 RESET，已同步清除`); return; }
-    applyDirective(t, dir);
-    toast(`${t.name}：手機 App ${msg}，現在是「${SEQ_LABEL[TARGET_SEQ[t.kind]]}」`);
+    const own = takePending(t, dir);
+    if (!takeDirective(t, dir)) { if (own) own.resolve(false); return; }   // the game drops repeats within 0.5 s
+    if (dir === 'enter') {
+      if (own) { clearTarget(t); renderSummary(); } else targetCleared(t, `${t.name}：手機 App 按了 RESET，已同步清除`);
+    } else {
+      applyDirective(t, dir);
+      if (!own) toast(`${t.name}：手機 App ${msg}，現在是「${SEQ_LABEL[TARGET_SEQ[t.kind]]}」`);
+    }
+    if (own) own.resolve(true);
     return;
   }
   if (Array.isArray(m.data)) m.data.forEach(e => addShot(t, e));
+}
+// Commands we sent over Bluetooth and are waiting to see come back on the WebSocket.
+function takePending(t, dir) {
+  const i = t.pending.findIndex(p => p.dir === dir);
+  if (i < 0) return null;
+  const p = t.pending[i]; t.pending.splice(i, 1); clearTimeout(p.timer);
+  return p;
 }
 
 // ---------- Shots ----------
@@ -475,11 +494,68 @@ const zoneText = s => ZONE_TEXT[s.zone] + (s.ns && s.zone !== 'NS' ? '+人質' :
 const zoneClass = s => 'zone-' + ('ACD'.includes(s.zone) ? s.zone : s.zone === 'X' ? 'X' : 'M');
 
 // ---------- Rendering ----------
+// How the target draws each practice target, taken from its scene files:
+// [image, centre x, centre y, scale x, scale y] in screen coordinates at zoom 1.
+// The target node sits at (360, 640) and the zoom scales around that point.
+const ART = {
+  bullseye: [['bullseye', 360, 640, 0.9, 0.9]],
+  ipsc_mini: [['ipsc', 360, 640, 1, 1]],
+  ipsc_mini_black_1: [['ipsc_black_1', 360, 640, 0.8, 0.8]],
+  ipsc_mini_black_2: [['ipsc_black_2', 360, 640, 0.8, 0.8]],
+  hostage: [['ipsc', 360, 640, 0.9, 0.9], ['ipsc-white', 360, 952, 0.9, 0.9]],
+  ipsc_mini_double: [['ipsc', 360, 640, 1, 1], ['ipsc', 360, 1020, 1, 1]],
+  '2poppers': [['popper', 260, 660, 0.8, 0.8], ['popper', 560, 840, 1, 1]],
+  '3paddles': [['paddle', 560, 296, 0.4, 0.4], ['paddle', 160, 880, 0.6, 0.6], ['paddle', 354, 570, 0.5, 0.5]],
+  uspsa: [['uspsa', 360, 640, 1.5, 1.5]],
+  idpa: [['idpa', 360, 640, 1.5, 1.5]],
+  idpa_ns: [['idpa', 360, 640, 1.5, 1.5], ['idpa-ns', 560, 840, 1.5, 1.5]],
+  idpa_hard_cover_1: [['idpa-black-1', 360, 640, 1.5, 1.5]],
+  idpa_hard_cover_2: [['idpa-black-2', 360, 640, 1.5, 1.5]],
+  mozambique: [['mosambique', 360, 640, 1.7, 1.7]],
+  custom_target: [['question-mark', 360, 765, 1, 1], ['custom-target-mask', 360, 640, 1, 1]],
+  dueling_tree_composite: [['duelling-tree-stand', 358, 747, 3, 3.3722]],
+  texas_start_composite: [['texas-star-stand', 360, 800, 1, 1]],
+};
+const IMG = window.TARGET_IMAGES || null;   // from target-images.js
+let clipSeq = 0;
+
 function drawTargetSvg(svg, z, kind) {
-  const K = KINDS[TARGET_SEQ[kind]];
-  let html = `<rect x="0" y="0" width="720" height="1280" fill="#2a3442"/>`;
-  if (K) {
-    const s = z * K.scale;
+  const name = TARGET_SEQ[kind];
+  const zx = x => CX + (x - CX) * z, zy = y => CY + (y - CY) * z;
+  const image = (key, cx, cy, sx, sy) => {
+    const im = IMG[key]; if (!im) return '';
+    const w = im.w * sx * z, h = im.h * sy * z;
+    return `<image href="${im.src}" x="${(zx(cx) - w / 2).toFixed(1)}" y="${(zy(cy) - h / 2).toFixed(1)}" width="${w.toFixed(1)}" height="${h.toFixed(1)}" preserveAspectRatio="none"/>`;
+  };
+  const clipId = 'scr' + (++clipSeq);   // the target screen is 720 x 1280; clip like it does
+  let html = IMG && IMG.drills_back ? image('drills_back', 360, 640, 1 / z, 1 / z) : `<rect x="0" y="0" width="720" height="1280" fill="#2a3442"/>`;
+  if (IMG) {
+    for (const a of ART[name] || []) html += image(...a);
+    if (name === 'dueling_tree_composite' && IMG['dueling-tree']) {
+      // seven pads, first frame (128 x 128) of the pad animation sheet
+      for (const y of [-436, -306, -176, -46, 84, 214, 344]) {
+        const s = 128 * z, x0 = zx(255) - s / 2, y0 = zy(640 + y) - s / 2;
+        html += `<svg x="${x0.toFixed(1)}" y="${y0.toFixed(1)}" width="${s.toFixed(1)}" height="${s.toFixed(1)}" viewBox="0 0 128 128">` +
+          `<image href="${IMG['dueling-tree'].src}" width="640" height="128"/></svg>`;
+      }
+    }
+    if (name === 'texas_start_composite') {
+      // drawn by the target's code: hub, 7 rods and a plate at the end of each
+      const ox = 360, oy = 500, n = 7, R = 300;
+      const plate = IMG.plate, ps = 129 * 1.5 * z;
+      let star = `<circle cx="${zx(ox)}" cy="${zy(oy)}" r="${40 * z}" fill="#0a0a0a"/>`;
+      for (let i = 0; i < n; i++) {
+        const deg = i * 360 / n;
+        star += `<g transform="translate(${zx(ox)} ${zy(oy)}) rotate(${deg})">` +
+          `<rect x="0" y="${-10 * z}" width="${270 * z}" height="${20 * z}" fill="#141414"/>` +
+          `<circle r="${16 * z}" fill="#333"/>` +
+          (plate ? `<image href="${plate.src}" x="${R * z - ps / 2}" y="${-ps / 2}" width="${ps}" height="${ps}"/>` : '') + `</g>`;
+      }
+      html += star;
+    }
+  } else if (KINDS[name]) {
+    // target-images.js is missing: fall back to drawing the zone outlines
+    const K = KINDS[name], s = z * K.scale;
     const pts = poly => poly.map(([x, y]) => `${(CX + x * s).toFixed(1)},${(CY + y * s).toFixed(1)}`).join(' ');
     const style = {
       paper: 'fill="var(--paper)" stroke="var(--paper-line)" stroke-width="2"',
@@ -488,20 +564,15 @@ function drawTargetSvg(svg, z, kind) {
       ns: 'fill="#f6f3ec" stroke="#4e3f29" stroke-width="3"',
     };
     for (const [poly, st] of K.layers) html += `<polygon points="${pts(poly)}" ${style[st]}/>`;
-    for (const [txt, x, y, st] of K.labels) {
-      const fill = st === 'hc' ? '#9a9aa2' : st === 'ns' ? '#4e3f29' : 'var(--paper-line)';
-      html += `<text x="${CX + x * s}" y="${CY + y * s}" text-anchor="middle" font-size="${(txt.length > 1 ? 34 : 40) * s}" fill="${fill}" opacity=".75">${txt}</text>`;
-    }
   } else {
-    html += `<text x="360" y="600" text-anchor="middle" font-size="44" fill="#c9ccd4">目前是「${SEQ_LABEL[TARGET_SEQ[kind]]}」</text>` +
-      `<text x="360" y="660" text-anchor="middle" font-size="30" fill="#9aa0ab">不在四種紙靶內，只顯示命中位置</text>`;
+    html += `<text x="360" y="620" text-anchor="middle" font-size="44" fill="#c9ccd4">${SEQ_LABEL[name]}</text>` +
+      `<text x="360" y="680" text-anchor="middle" font-size="28" fill="#9aa0ab">（缺少 target-images.js，無法畫出靶圖）</text>`;
   }
   for (const b of Object.values(UI_BUTTONS)) {
-    html += `<rect x="${b.x0}" y="${b.y0}" width="${b.x1 - b.x0}" height="${b.y1 - b.y0}" rx="12" fill="none" stroke="#e0452b" stroke-opacity=".55" stroke-width="3" stroke-dasharray="8 6"/>` +
-      `<text x="${(b.x0 + b.x1) / 2}" y="${(b.y0 + b.y1) / 2 + 14}" text-anchor="middle" font-size="40" font-weight="700" fill="#e0452b" fill-opacity=".7">${b.label}</text>`;
+    html += `<rect x="${b.x0}" y="${b.y0}" width="${b.x1 - b.x0}" height="${b.y1 - b.y0}" rx="12" fill="none" stroke="#e0452b" stroke-opacity=".55" stroke-width="3" stroke-dasharray="8 6"/>`;
   }
-  html += `<g class="holes"></g>`;
-  svg.innerHTML = html;
+  svg.innerHTML = `<defs><clipPath id="${clipId}"><rect width="720" height="1280"/></clipPath></defs>` +
+    `<g clip-path="url(#${clipId})">${html}<g class="holes"></g></g>`;
 }
 
 function buildCards() {
@@ -514,7 +585,6 @@ function buildCards() {
     grid.innerHTML = '<div class="card empty">還沒有靶機。按上方「搜尋靶機」，或在右下手動加入 IP。</div>';
     return;
   }
-  const kindOptions = SUPPORTED.map(k => `<option value="${k}">${SEQ_LABEL[TARGET_SEQ[k]]}</option>`).join('');
   const allOptions = TARGET_SEQ.map((n, k) => `<option value="${k}">${k + 1}. ${SEQ_LABEL[n]}</option>`).join('');
   for (const t of targets) {
     const el = document.createElement('div');
@@ -528,15 +598,15 @@ function buildCards() {
         <span class="score"></span>
       </div>
       <div class="kindrow">
-        <select class="kind" title="選擇靶種；有連藍牙時靶機會跟著切換">
-          ${kindOptions}<option value="other" disabled>其他</option>
-        </select>
+        <button data-act="prev" title="上一個靶（有連藍牙時靶機一起換）">◀</button>
+        <span class="kindname"></span>
+        <button data-act="next" title="下一個靶（有連藍牙時靶機一起換）">▶</button>
         <button class="small" data-act="cal" title="靶機畫面和這裡不一樣時，用來校正（不會送指令給靶機）">校正</button>
         <select class="small cal" hidden title="選靶機目前畫面上的靶">
           <option value="" selected disabled>靶機現在顯示的是…</option>${allOptions}
         </select>
       </div>
-      <div class="note" hidden></div>
+      <div class="note" hidden title="點一下關閉"></div>
       <svg class="tsvg" viewBox="0 0 720 1280" xmlns="http://www.w3.org/2000/svg"></svg>
       <div class="ble">
         <select class="small zoom" title="要和這台靶機畫面的 Zoom 一致">
@@ -544,9 +614,7 @@ function buildCards() {
         </select>
         <button class="small" data-act="wide" title="放大／縮小這張靶">⤢</button>
         <button class="small" data-act="ble" title="連接這台的藍牙">藍牙</button>
-        <button class="small" data-act="prev" title="上一種紙靶（只在四種紙靶之間切換）">◀</button>
         <button class="small" data-dir="enter" title="清除（RESET）">◎ 清除</button>
-        <button class="small" data-act="next" title="下一種紙靶（只在四種紙靶之間切換）">▶</button>
         <button class="small" data-dir="homepage" title="回主選單">⌂</button>
         <button class="small" data-act="remove" title="從清單移除">✕</button>
         <span class="bstat"></span>
@@ -562,16 +630,16 @@ function buildCards() {
     el.querySelector('.name').addEventListener('change', e => {
       t.name = e.target.value.trim() || t.name; e.target.value = t.name; saveTargets(); renderSummary();
     });
-    el.querySelector('.kind').addEventListener('change', e => chooseKind(t, Number(e.target.value)));
     const cal = el.querySelector('.cal');
     el.querySelector('[data-act=cal]').addEventListener('click', () => { cal.hidden = !cal.hidden; cal.value = ''; });
     cal.addEventListener('change', () => {
       setKind(t, Number(cal.value)); cal.hidden = true;
       toast(`${t.name}：已校正為「${SEQ_LABEL[TARGET_SEQ[t.kind]]}」`);
     });
+    el.querySelector('.note').addEventListener('click', () => { t.note = ''; updateKindUi(t); });
     el.querySelectorAll('[data-dir]').forEach(b => b.addEventListener('click', () => sendDirective(t, b.dataset.dir)));
-    el.querySelector('[data-act=prev]').addEventListener('click', () => stepPaper(t, -1));
-    el.querySelector('[data-act=next]').addEventListener('click', () => stepPaper(t, 1));
+    el.querySelector('[data-act=prev]').addEventListener('click', () => stepKind(t, 'left'));
+    el.querySelector('[data-act=next]').addEventListener('click', () => stepKind(t, 'right'));
     el.querySelector('[data-act=ble]').addEventListener('click', () => bleConnect(t));
     el.querySelector('[data-act=wide]').addEventListener('click', () => { t.wide = !t.wide; el.classList.toggle('wide', t.wide); });
     el.querySelector('[data-act=remove]').addEventListener('click', () => { removeTarget(t); toast(`已移除 ${t.name}`); });
@@ -582,11 +650,9 @@ function buildCards() {
 
 function updateKindUi(t) {
   if (!t.el) return;
-  const sel = t.el.querySelector('.kind');
-  const other = sel.querySelector('option[value=other]');
-  if (SUPPORTED.includes(t.kind)) { sel.value = String(t.kind); other.textContent = '其他'; }
-  else { other.textContent = `其他：${SEQ_LABEL[TARGET_SEQ[t.kind]]}`; sel.value = 'other'; }
-  sel.disabled = t.moving;
+  const name = TARGET_SEQ[t.kind];
+  t.el.querySelector('.kindname').innerHTML = `<b>${SEQ_LABEL[name]}</b> <span class="ip">${t.kind + 1}/${TARGET_SEQ.length}` +
+    (KINDS[name] ? '' : '・只顯示命中，不計分') + '</span>';
   const note = t.el.querySelector('.note');
   note.textContent = t.note; note.hidden = !t.note;
 }
@@ -775,53 +841,42 @@ async function bleConnect(t) {
 
 const lastSent = {};
 const sleep = ms => new Promise(r => setTimeout(r, ms));
+// Sends a command over Bluetooth. The page does not change its own state here: it
+// waits for the target to broadcast the command on the WebSocket (handleMessage),
+// so a command is never counted twice. Without a WebSocket, or if no broadcast
+// arrives within 1.5 s, the command is applied directly.
+// Resolves true once the command has been applied.
 async function sendDirective(t, dir, quiet) {
   const key = t.id + dir, now = Date.now();
   if (now - (lastSent[key] || 0) < 600) return false;   // the game throttles each directive for 0.5s
   if (!t.bleChar && !(await bleConnect(t))) return false;
   lastSent[key] = now;
+  const p = { dir };
+  p.done = new Promise(r => { p.resolve = r; });
+  t.pending.push(p);
   try { await bleWrite(t, { action: 'remote_control', directive: dir }); }
-  catch (e) { t.bleChar = null; bleSay(t, '發送失敗，再按一次可重連'); return false; }
-  t.echo.push({ dir, until: Date.now() + 2000 });   // ignore the WebSocket echo of this command
-  t.lastDir[dir] = Date.now();
-  if (dir === 'enter') { clearTarget(t); renderSummary(); }
-  else applyDirective(t, dir);
-  if (!quiet) toast(`${t.name}：${{ enter: '已清除', homepage: '回主選單' }[dir] || ('現在是「' + SEQ_LABEL[TARGET_SEQ[t.kind]] + '」')}`);
-  return true;
-}
-
-// Drive the target to the wanted kind with the fewest ◀ / ▶ presses (Bluetooth).
-async function goToKind(t, want) {
-  if (t.moving) return;
-  if (!t.bleChar && !(await bleConnect(t))) { updateKindUi(t); return; }
-  const n = TARGET_SEQ.length, fwd = (want - t.kind + n) % n;
-  const dir = fwd <= n - fwd ? 'right' : 'left';
-  let steps = Math.min(fwd, n - fwd);
-  t.moving = true; updateKindUi(t);
-  while (steps > 0) {
-    if (!(await sendDirective(t, dir, true))) break;
-    steps--;
-    if (steps) await sleep(700);
+  catch (e) {
+    takePending(t, dir); t.bleChar = null; bleSay(t, '發送失敗，再按一次可重連'); return false;
   }
-  t.moving = false; updateKindUi(t);
-  toast(steps ? `${t.name}：切換中斷，請確認靶機畫面` : `${t.name}：已切換到「${SEQ_LABEL[TARGET_SEQ[t.kind]]}」`);
+  const applyLocally = () => {
+    if (!t.pending.includes(p)) return;
+    takePending(t, dir);
+    if (!takeDirective(t, dir)) { p.resolve(false); return; }
+    if (dir === 'enter') { clearTarget(t); renderSummary(); } else applyDirective(t, dir);
+    p.resolve(true);
+  };
+  if (t.on) p.timer = setTimeout(applyLocally, 1500); else applyLocally();
+  const ok = await p.done;
+  if (ok && !quiet) toast(`${t.name}：${{ enter: '已清除', homepage: '回主選單', back: '回主選單' }[dir] || ('現在是「' + SEQ_LABEL[TARGET_SEQ[t.kind]] + '」')}`);
+  return ok;
 }
 
-// Card dropdown: with Bluetooth the target follows; without it this only tells
-// the page which target is showing.
-function chooseKind(t, want) {
-  if (t.bleChar) { goToKind(t, want); return; }
-  setKind(t, want);
-  toast(`${t.name}：網頁改為「${SEQ_LABEL[TARGET_SEQ[want]]}」（未連藍牙，靶機請手動切換）`);
-}
-
-// Card ◀ ▶: cycle only through the four paper targets.
-function stepPaper(t, delta) {
-  const i = SUPPORTED.indexOf(t.kind);
-  const want = i >= 0 ? SUPPORTED[(i + delta + SUPPORTED.length) % SUPPORTED.length]
-                      : (delta > 0 ? SUPPORTED[0] : SUPPORTED[SUPPORTED.length - 1]);
-  if (t.bleChar) goToKind(t, want);
-  else bleConnect(t).then(ok => { if (ok) goToKind(t, want); });
+// Card ◀ ▶: with Bluetooth the target steps too and the page follows its broadcast;
+// without Bluetooth only the page changes.
+async function stepKind(t, dir) {
+  if (t.bleChar) { await sendDirective(t, dir); return; }
+  setKind(t, t.kind + (dir === 'right' ? 1 : -1));
+  toast(`${t.name}：網頁換成「${SEQ_LABEL[TARGET_SEQ[t.kind]]}」（未連藍牙，靶機請自己切換）`);
 }
 
 async function clearEverything() {
