@@ -9,6 +9,7 @@
   --bg: #f4f2ee; --panel: #ffffff; --ink: #1d1d1f; --muted: #6b6b70; --line: #dcd8d0;
   --paper: #e9d3b0; --paper-line: #6d5a3e; --hole: #1d1d1f; --last: #e0452b;
   --a: #1f8a4c; --c: #c98a00; --d: #b5541c; --m: #b3261e; --ok: #1f8a4c; --bad: #b3261e;
+  --th: 70vh;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
@@ -20,56 +21,60 @@
 * { box-sizing: border-box; }
 body { margin: 0; background: var(--bg); color: var(--ink);
   font-family: -apple-system, "PingFang TC", "Microsoft JhengHei", "Noto Sans TC", sans-serif; }
-header { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; padding: 12px 16px;
+header { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; padding: 12px 16px;
   border-bottom: 1px solid var(--line); background: var(--panel); }
 header h1 { font-size: 18px; margin: 0 8px 0 0; }
 .status { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; color: var(--muted); }
-.dot { width: 10px; height: 10px; border-radius: 50%; background: var(--bad); }
+.dot { width: 10px; height: 10px; border-radius: 50%; background: var(--bad); flex: none; }
 .dot.on { background: var(--ok); }
 input, select, button { font: inherit; font-size: 14px; padding: 6px 10px; border-radius: 8px;
   border: 1px solid var(--line); background: var(--bg); color: var(--ink); }
-input#ip { width: 140px; }
 button { cursor: pointer; }
 button.primary { background: var(--last); color: #fff; border-color: transparent; font-weight: 600;
-  font-size: 18px; padding: 10px 22px; }
+  font-size: 16px; padding: 9px 16px; }
 .spacer { flex: 1; }
-main { display: grid; grid-template-columns: minmax(0, 1fr) 380px; gap: 16px; padding: 16px;
-  height: calc(100vh - 62px); }
-.board { background: var(--panel); border-radius: 12px; border: 1px solid var(--line);
-  display: flex; align-items: center; justify-content: center; min-height: 0; padding: 8px; }
-.board svg { height: 100%; max-width: 100%; }
-.side { display: flex; flex-direction: column; gap: 12px; min-height: 0; }
-.card { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 14px; }
-.big { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; text-align: center; }
-.big .v { font-size: 32px; font-weight: 700; font-variant-numeric: tabular-nums; }
+main { display: grid; grid-template-columns: minmax(0, 1fr) 400px; gap: 16px; padding: 16px; align-items: start; }
+.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 12px; }
+.tcard { display: flex; flex-direction: column; gap: 8px; }
+.tcard.wide { grid-column: 1 / -1; }
+.tcard.wide .tsvg { height: 78vh; }
+.thead { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.thead input.name { font-weight: 700; font-size: 16px; border-color: transparent; background: transparent;
+  padding: 4px 6px; width: 8em; min-width: 0; }
+.thead input.name:hover, .thead input.name:focus { border-color: var(--line); background: var(--bg); }
+.thead .ip { font-size: 12px; color: var(--muted); }
+.thead .score { font-size: 15px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.small { font-size: 12px; padding: 4px 8px; }
+.tsvg { width: 100%; height: var(--th); display: block; }
+.ble { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.ble .bstat { font-size: 12px; color: var(--muted); flex: 1; min-width: 8em; }
+.side { display: flex; flex-direction: column; gap: 12px; position: sticky; top: 16px; max-height: calc(100vh - 32px); }
+.big { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; text-align: center; }
+.big .v { font-size: 26px; font-weight: 700; font-variant-numeric: tabular-nums; }
 .big .k { font-size: 12px; color: var(--muted); }
-.zones { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; text-align: center; margin-top: 12px; }
-.zones .v { font-size: 22px; font-weight: 700; font-variant-numeric: tabular-nums; }
-.zones .k { font-size: 13px; font-weight: 700; }
-.list { flex: 1; overflow: auto; padding: 0; }
 table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
-th, td { padding: 8px 10px; text-align: right; font-size: 15px; border-bottom: 1px solid var(--line); }
+th, td { padding: 6px 8px; text-align: right; font-size: 14px; border-bottom: 1px solid var(--line); }
 th { position: sticky; top: 0; background: var(--panel); color: var(--muted); font-size: 12px; font-weight: 600; }
 td:first-child, th:first-child { text-align: left; }
+tr.total td { font-weight: 700; border-top: 2px solid var(--muted); border-bottom: none; }
 tr.latest td { background: color-mix(in srgb, var(--last) 12%, transparent); }
-tr.newstring td { border-top: 2px solid var(--muted); }
+.log { overflow: auto; padding: 0; min-height: 120px; flex: 1; }
 .zone-A { color: var(--a); font-weight: 700; } .zone-C { color: var(--c); font-weight: 700; }
 .zone-D { color: var(--d); font-weight: 700; } .zone-M { color: var(--m); font-weight: 700; }
-.opts { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; font-size: 14px; color: var(--muted); }
+.opts { display: flex; flex-wrap: wrap; gap: 8px 10px; align-items: center; font-size: 14px; color: var(--muted); }
 .opts input[type=number] { width: 64px; }
+.opts input.addip { width: 150px; }
+.hint { font-size: 12px; color: var(--muted); line-height: 1.5; margin: 8px 0 0; }
 #toast { position: fixed; left: 50%; top: 80px; transform: translateX(-50%); background: var(--ink);
   color: var(--bg); padding: 12px 20px; border-radius: 10px; font-size: 18px; font-weight: 600;
-  opacity: 0; pointer-events: none; transition: opacity .2s; z-index: 10; }
+  opacity: 0; pointer-events: none; transition: opacity .2s; z-index: 10; max-width: 90vw; }
 #toast.show { opacity: 1; }
-.hint { font-size: 12px; color: var(--muted); line-height: 1.5; }
-.ctl-head { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; flex-wrap: wrap; }
-.ctl-head strong { font-size: 14px; }
-.ctl { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
-.ctl button { padding: 10px 4px; font-weight: 600; }
-@media (max-width: 860px) {
-  main { grid-template-columns: 1fr; height: auto; }
-  .board { height: 70vh; }
-  .list { max-height: 50vh; }
+.empty { padding: 40px 16px; text-align: center; color: var(--muted); }
+@media (max-width: 960px) {
+  main { grid-template-columns: 1fr; }
+  .side { position: static; max-height: none; }
+  .log { max-height: 50vh; }
 }
 </style>
 </head>
@@ -78,136 +83,89 @@ tr.newstring td { border-top: 2px solid var(--muted); }
 <header>
   <h1>IPSC 靶監看</h1>
   <span class="status"><span class="dot" id="dot"></span><span id="statusText">未連線</span></span>
-  <label class="status">靶機 IP <input id="ip" value="192.168.86.60"></label>
-  <button id="find" title="在同網段重新尋找靶機">重新搜尋</button>
-  <label class="status">靶機縮放
-    <select id="zoom"><option value="1">1.0x</option><option value="0.7">0.7x</option><option value="0.5">0.5x</option></select>
-  </label>
+  <button id="find" title="在同網段搜尋所有靶機">搜尋靶機</button>
+  <span class="status" id="scanText"></span>
   <span class="spacer"></span>
-  <button class="primary" id="clear" title="只清除這台電腦上的紀錄；要連靶機一起清，用右側「遠端控制」的清除鍵，或對 RESET 開一槍">只清電腦紀錄</button>
+  <label class="status">計分
+    <select id="mode"><option value="practice">練習（每發都算）</option><option value="match">比賽（每靶取最佳 2 發）</option></select>
+  </label>
+  <label class="status">
+    <select id="power"><option value="minor">Minor</option><option value="major">Major</option></select>
+  </label>
+  <button id="clear" title="只清除這台電腦上的紀錄">只清電腦紀錄</button>
+  <button class="primary" id="clearAllBle" title="透過藍牙對每台已連接的靶機送出清除，並清空電腦紀錄">全部清除</button>
 </header>
 <main>
-  <div class="board">
-    <svg id="svg" viewBox="0 0 720 1280" xmlns="http://www.w3.org/2000/svg" aria-label="IPSC 靶">
-      <rect x="0" y="0" width="720" height="1280" fill="#2a3442" />
-      <g id="target"></g>
-      <g id="holes"></g>
-    </svg>
-  </div>
+  <div class="grid" id="grid"></div>
   <div class="side">
     <div class="card">
       <div class="big">
-        <div><div class="v" id="count">0</div><div class="k">彈數</div></div>
-        <div><div class="v" id="fastest">–</div><div class="k">最快分段</div></div>
-        <div><div class="v" id="avg">–</div><div class="k">平均分段</div></div>
-      </div>
-      <div class="zones">
-        <div><div class="k zone-A">A</div><div class="v" id="nA">0</div></div>
-        <div><div class="k zone-C">C</div><div class="v" id="nC">0</div></div>
-        <div><div class="k zone-D">D</div><div class="v" id="nD">0</div></div>
-        <div><div class="k zone-M">Miss</div><div class="v" id="nM">0</div></div>
+        <div><div class="v" id="totCount">0</div><div class="k">總彈數</div></div>
+        <div><div class="v" id="totScore">0</div><div class="k">總分</div></div>
+        <div><div class="v" id="totTime">–</div><div class="k">時間</div></div>
+        <div><div class="v" id="totHF">–</div><div class="k">Hit Factor</div></div>
       </div>
     </div>
-    <div class="card">
-      <div class="ctl-head">
-        <strong>遠端控制</strong>
-        <span class="status"><span class="dot" id="bleDot"></span><span id="bleStatus" style="font-size:13px;">未連接藍牙</span></span>
-        <span class="spacer"></span>
-        <button id="bleConnect">連接靶機</button>
-      </div>
-      <div class="ctl">
-        <button data-dir="left" title="切換到上一個靶">◀ 上一靶</button>
-        <button data-dir="enter" title="練習畫面＝清除（RESET）；主選單＝確認選取">◎ 清除</button>
-        <button data-dir="right" title="切換到下一個靶">▶ 下一靶</button>
-        <button data-dir="back" title="返回上一層">↩ 返回</button>
-        <button data-dir="homepage" title="回到主選單">⌂ 首頁</button>
-        <button id="bleReconnect" title="重新連接藍牙">⟳</button>
-      </div>
-      <p class="hint">透過藍牙（BLE）直接控制靶機，不經伺服器；需 Chrome/Edge，第一次按會跳出裝置選擇視窗。指令依靶機當前畫面而定（例如「清除」在主選單會變成確認選取）。遊戲端同一指令有 0.5 秒節流。</p>
-    </div>
-    <div class="card list">
+    <div class="card" style="padding:0">
       <table>
-        <thead><tr><th>#</th><th>區</th><th>分段</th><th>X mm</th><th>Y mm</th></tr></thead>
-        <tbody id="rows"></tbody>
+        <thead><tr><th>靶</th><th>彈數</th><th>A</th><th>C</th><th>D</th><th>Miss</th><th>分數</th></tr></thead>
+        <tbody id="sumRows"></tbody>
+      </table>
+    </div>
+    <div class="card log">
+      <table>
+        <thead><tr><th>#</th><th>靶</th><th>區</th><th>分段</th></tr></thead>
+        <tbody id="logRows"></tbody>
       </table>
     </div>
     <div class="card">
       <div class="opts">
+        <input class="addip" id="addIp" placeholder="手動加入 IP">
+        <button id="addBtn">加入</button>
+      </div>
+      <div class="opts" style="margin-top:8px">
         <label><input type="checkbox" id="autoClear"> 停頓超過</label>
-        <input type="number" id="idleSec" value="10" min="2" max="300"> 秒後，下一發自動開新一輪
+        <input type="number" id="idleSec" value="10" min="2" max="300"> 秒，下一發自動開新一輪
+        <label><input type="checkbox" id="clearTogether"> 任一台 RESET 就全部清除</label>
         <label><input type="checkbox" id="beep" checked> 命中提示音</label>
       </div>
-      <p class="hint">要連靶機一起清：用上方「遠端控制」的 <b>◎ 清除</b>（走藍牙，連靶機畫面一起清），或對靶上的 <b>RESET</b>（圖上紅色虛線框）開一槍，或用手機 App 按 RESET，這頁會自動跟著清空，那一槍不算成績。
-      上方紅色「清除」按鈕只清這台電腦上的紀錄。<br>
-      「靶機縮放」要和靶機畫面下方的 Zoom 一致，A/C/D 判定才會準。</p>
+      <p class="hint">
+        <b>清除</b>：「全部清除」透過藍牙清每台已連接的靶機並清空電腦紀錄；靶卡下方的 ◎ 只清那一台。對靶上的 RESET 開一槍或用手機 App 按 RESET，對應那台的紀錄也會自動清空。<br>
+        <b>計分</b>：Miss 扣 10 分；比賽模式每張靶取最佳 2 發，不足 2 發算 Miss。時間是第一發到最後一發（不含起始嗶聲）。<br>
+        每台的「縮放」要和該靶機畫面的 Zoom 一致，A/C/D 判定才會準。
+      </p>
     </div>
   </div>
 </main>
 <script>
-// Zone polygons from the target's own ipsc_mini scene (local coords, scale 1.0, centred at 360,640)
+// ---------- Target geometry (from the target's own ipsc_mini scene) ----------
 const ZONES = {
   D: [[139,-498],[394,-163],[394,169],[139,490],[-139,490],[-394,169],[-394,-163],[-139,-498]],
   C: [[136,-495],[273,-157],[273,78],[90,298],[-90,298],[-273,78],[-273,-157],[-136,-495]],
   A: [[47,-458],[140,-156],[139,-25],[46,112],[-46,112],[-139,-25],[-140,-156],[-47,-458]],
 };
-// On-screen buttons of the target's practice (bootcamp) scene, in 720x1280 screen coords.
-// A hit inside one of these is a button press on the target, not a scored shot.
+// On-screen buttons of the practice (bootcamp) scene, 720x1280 screen coords.
 const UI_BUTTONS = {
   reset: { x0: 200, y0: 1140, x1: 520, y1: 1260, label: 'RESET' },
   prev:  { x0: 20,  y0: 1140, x1: 180, y1: 1260, label: '◀' },
   next:  { x0: 540, y0: 1140, x1: 700, y1: 1260, label: '▶' },
   back:  { x0: 10,  y0: 125,  x1: 170, y1: 285,  label: '⌂' },
 };
-const CX = 360, CY = 640;          // target centre on the 720x1280 screen
-const SENSOR_W = 268, SENSOR_H = 476.4; // sensor space (mm), origin bottom-left
+const CX = 360, CY = 640;
+const SENSOR_W = 268, SENSOR_H = 476.4;   // hit coords in mm, origin bottom-left
+const POINTS = { minor: { A: 5, C: 3, D: 1 }, major: { A: 5, C: 4, D: 2 } };
+const MISS_PENALTY = 10;
 
 const $ = id => document.getElementById(id);
 const svgNS = 'http://www.w3.org/2000/svg';
-let shots = [];        // {t, x, y, gx, gy, zone, split, newString}
-let seen = new Set();
-let ws = null, retry = 1000;
-
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 function store(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
 function load(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
 
-function zoom() { return parseFloat($('zoom').value); }
-
-function drawTarget() {
-  const g = $('target'); g.innerHTML = '';
-  const z = zoom();
-  const pts = poly => poly.map(([x, y]) => `${CX + x * z},${CY + y * z}`).join(' ');
-  const d = document.createElementNS(svgNS, 'polygon');
-  d.setAttribute('points', pts(ZONES.D)); d.setAttribute('fill', 'var(--paper)');
-  d.setAttribute('stroke', 'var(--paper-line)'); d.setAttribute('stroke-width', 2);
-  g.appendChild(d);
-  for (const k of ['C', 'A']) {
-    const p = document.createElementNS(svgNS, 'polygon');
-    p.setAttribute('points', pts(ZONES[k])); p.setAttribute('fill', 'none');
-    p.setAttribute('stroke', 'var(--paper-line)'); p.setAttribute('stroke-width', 2);
-    p.setAttribute('stroke-dasharray', '10 6'); g.appendChild(p);
-  }
-  for (const b of Object.values(UI_BUTTONS)) {
-    const r = document.createElementNS(svgNS, 'rect');
-    r.setAttribute('x', b.x0); r.setAttribute('y', b.y0);
-    r.setAttribute('width', b.x1 - b.x0); r.setAttribute('height', b.y1 - b.y0);
-    r.setAttribute('rx', 12); r.setAttribute('fill', 'none');
-    r.setAttribute('stroke', '#e0452b'); r.setAttribute('stroke-opacity', '0.55');
-    r.setAttribute('stroke-width', 3); r.setAttribute('stroke-dasharray', '8 6');
-    g.appendChild(r);
-    const s = document.createElementNS(svgNS, 'text');
-    s.setAttribute('x', (b.x0 + b.x1) / 2); s.setAttribute('y', (b.y0 + b.y1) / 2 + 14);
-    s.setAttribute('text-anchor', 'middle'); s.setAttribute('font-size', 40);
-    s.setAttribute('font-weight', 700); s.setAttribute('fill', '#e0452b'); s.setAttribute('fill-opacity', '0.7');
-    s.textContent = b.label; g.appendChild(s);
-  }
-  const labels = [['A', 0, -60], ['C', -205, -60], ['C', 205, -60], ['D', -335, -60], ['D', 335, -60]];
-  for (const [t, x, y] of labels) {
-    const s = document.createElementNS(svgNS, 'text');
-    s.setAttribute('x', CX + x * z); s.setAttribute('y', CY + y * z);
-    s.setAttribute('text-anchor', 'middle'); s.setAttribute('font-size', 40 * z);
-    s.setAttribute('fill', 'var(--paper-line)'); s.setAttribute('opacity', '0.6'); s.textContent = t;
-    g.appendChild(s);
-  }
+let toastTimer = null;
+function toast(text) {
+  const el = $('toast'); el.textContent = text; el.classList.add('show');
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => el.classList.remove('show'), 3000);
 }
 
 function inPoly(x, y, poly) {
@@ -218,16 +176,12 @@ function inPoly(x, y, poly) {
   }
   return inside;
 }
-
-function classify(gx, gy) {
-  const z = zoom(), lx = (gx - CX) / z, ly = (gy - CY) / z;
+function classify(gx, gy, z) {
+  const lx = (gx - CX) / z, ly = (gy - CY) / z;
   for (const k of ['A', 'C', 'D']) if (inPoly(lx, ly, ZONES[k])) return k;
   return 'M';
 }
-
-function toScreen(x, y) {
-  return [x * 720 / SENSOR_W, 1280 - y * 1280 / SENSOR_H];
-}
+const toScreen = (x, y) => [x * 720 / SENSOR_W, 1280 - y * 1280 / SENSOR_H];
 
 let audioCtx = null;
 function beep(zone) {
@@ -242,98 +196,45 @@ function beep(zone) {
   } catch (e) {}
 }
 
-function addShot(e) {
-  const x = Number(e.x), y = Number(e.y), t = Number(e.t);
-  if (!isFinite(x) || !isFinite(y)) return;
-  const key = `${t}|${x}|${y}`;
-  if (seen.has(key)) return;
-  seen.add(key);
-  const [bx, by] = toScreen(x, y);
-  const btn = Object.entries(UI_BUTTONS).find(([, b]) => bx >= b.x0 && bx <= b.x1 && by >= b.y0 && by <= b.y1);
-  if (btn) {
-    const now = Date.now();
-    if (now - lastButtonHit < 500) return; // same cooldown idea as the target
-    lastButtonHit = now;
-    const msg = { reset: '靶機 RESET 被擊中，已同步清除', prev: '靶機切換到上一個靶，已清除',
-                  next: '靶機切換到下一個靶，已清除', back: '靶機回到主選單，已清除' }[btn[0]];
-    clearAll(); toast(msg);
-    return;
+// ---------- Targets ----------
+// Each target: its own WebSocket (Wi-Fi) for hits, optional BLE link for control.
+const targets = [];
+let nextId = 1;
+
+function makeTarget({ ip, name, zoom }) {
+  return { id: nextId++, ip, name: name || `靶 ${targets.length + 1}`, zoom: Number(zoom) || 1,
+    ws: null, on: false, gen: 0, retry: 2000, timer: null,
+    shots: [], seen: new Set(), lastBtn: 0,
+    bleDevice: null, bleChar: null, bleText: '藍牙未連接', wide: false, el: null };
+}
+function saveTargets() {
+  store('ipsc.targets', JSON.stringify(targets.map(t => ({ ip: t.ip, name: t.name, zoom: t.zoom }))));
+}
+function loadTargets() {
+  let list = null;
+  try { list = JSON.parse(load('ipsc.targets') || 'null'); } catch (e) {}
+  if (!Array.isArray(list)) {
+    const old = load('ipsc.ip');                 // migrate the single-target setting
+    list = [{ ip: old || '192.168.86.60', name: '靶 1', zoom: Number(load('ipsc.zoom')) || 1 }];
   }
-  const prev = shots[shots.length - 1];
-  const idle = parseFloat($('idleSec').value) || 10;
-  if (prev && $('autoClear').checked && isFinite(t) && isFinite(prev.t) && (t - prev.t) / 1000 > idle) {
-    clearAll(false);
-  }
-  const last = shots[shots.length - 1];
-  const [gx, gy] = toScreen(x, y);
-  const split = last && isFinite(t) && isFinite(last.t) ? (t - last.t) / 1000 : null;
-  const zone = classify(gx, gy);
-  shots.push({ t, x, y, gx, gy, zone, split });
-  beep(zone);
-  render();
+  for (const it of list) if (it && it.ip) targets.push(makeTarget(it));
 }
 
-function reclassify() { for (const s of shots) s.zone = classify(s.gx, s.gy); }
-
-function render() {
-  const h = $('holes'); h.innerHTML = '';
-  shots.forEach((s, i) => {
-    const isLast = i === shots.length - 1;
-    const c = document.createElementNS(svgNS, 'circle');
-    c.setAttribute('cx', s.gx); c.setAttribute('cy', s.gy); c.setAttribute('r', 11);
-    c.setAttribute('fill', isLast ? 'var(--last)' : 'var(--hole)');
-    c.setAttribute('stroke', '#fff'); c.setAttribute('stroke-width', 2);
-    h.appendChild(c);
-    const t = document.createElementNS(svgNS, 'text');
-    t.setAttribute('x', s.gx + 16); t.setAttribute('y', s.gy - 12);
-    t.setAttribute('font-size', 30); t.setAttribute('font-weight', 700);
-    t.setAttribute('fill', isLast ? 'var(--last)' : '#1d1d1f');
-    t.setAttribute('stroke', '#fff'); t.setAttribute('stroke-width', 5); t.setAttribute('paint-order', 'stroke');
-    t.textContent = i + 1; h.appendChild(t);
-  });
-  const n = { A: 0, C: 0, D: 0, M: 0 };
-  shots.forEach(s => n[s.zone]++);
-  for (const k in n) $('n' + k).textContent = n[k];
-  $('count').textContent = shots.length;
-  const splits = shots.map(s => s.split).filter(v => v != null);
-  $('fastest').textContent = splits.length ? Math.min(...splits).toFixed(2) + 's' : '–';
-  $('avg').textContent = splits.length ? (splits.reduce((a, b) => a + b, 0) / splits.length).toFixed(2) + 's' : '–';
-  const rows = $('rows'); rows.innerHTML = '';
-  for (let i = shots.length - 1; i >= 0; i--) {
-    const s = shots[i], tr = document.createElement('tr');
-    if (i === shots.length - 1) tr.className = 'latest';
-    const zname = s.zone === 'M' ? 'Miss' : s.zone;
-    tr.innerHTML = `<td>${i + 1}</td><td class="zone-${s.zone}">${zname}</td>` +
-      `<td>${s.split == null ? '—' : '+' + s.split.toFixed(2) + 's'}</td>` +
-      `<td>${s.x.toFixed(0)}</td><td>${s.y.toFixed(0)}</td>`;
-    rows.appendChild(tr);
-  }
+function addTarget(ip, name) {
+  ip = ip.trim();
+  if (!ip || targets.some(t => t.ip === ip)) return null;
+  const t = makeTarget({ ip, name });
+  targets.push(t); saveTargets(); buildCards(); connectTarget(t);
+  return t;
+}
+function removeTarget(t) {
+  const i = targets.indexOf(t); if (i < 0) return;
+  t.gen++; clearTimeout(t.timer); dropWs(t);
+  try { if (t.bleDevice && t.bleDevice.gatt.connected) t.bleDevice.gatt.disconnect(); } catch (e) {}
+  targets.splice(i, 1); saveTargets(); buildCards(); renderAll();
 }
 
-function clearAll(doRender = true) {
-  shots = [];
-  if (doRender) render();
-}
-
-let lastButtonHit = 0, toastTimer = null;
-function toast(text) {
-  const el = $('toast'); el.textContent = text; el.classList.add('show');
-  clearTimeout(toastTimer); toastTimer = setTimeout(() => el.classList.remove('show'), 3000);
-}
-
-function setStatus(on, text) {
-  $('dot').classList.toggle('on', on);
-  $('statusText').textContent = text;
-}
-
-// ---- Connection + automatic discovery ----
-// The target answers a WebSocket upgrade on ws://<ip>/websocket (port 80).
-// On start we try the last known IP; if that fails twice we sweep the likely
-// home subnets (the last known one first) and keep the first host that opens.
-let gen = 0;            // bumps on every new connect/scan so stale attempts stop
-let failCount = 0, retryTimer = null;
-const COMMON_PREFIXES = ['192.168.86', '192.168.1', '192.168.0', '192.168.50', '192.168.31', '10.0.0', '10.0.1'];
-
+// ---------- WebSocket per target ----------
 function probe(ip, timeoutMs) {
   return new Promise(resolve => {
     let done = false, sock;
@@ -349,215 +250,419 @@ function probe(ip, timeoutMs) {
     sock.onclose = () => finish(false);
   });
 }
+function dropWs(t) {
+  if (t.ws) { try { t.ws.onclose = null; t.ws.onmessage = null; t.ws.close(); } catch (e) {} t.ws = null; }
+}
+function setOn(t, on) { t.on = on; updateCardStatus(t); updateHeaderStatus(); }
+
+async function connectTarget(t) {
+  const my = ++t.gen;
+  clearTimeout(t.timer); dropWs(t); setOn(t, false);
+  const sock = await probe(t.ip, 3000);
+  if (my !== t.gen || !targets.includes(t)) { if (sock) sock.close(); return; }
+  if (!sock) {
+    t.timer = setTimeout(() => connectTarget(t), t.retry);
+    t.retry = Math.min(t.retry * 2, 15000);
+    return;
+  }
+  t.retry = 2000; t.ws = sock; setOn(t, true);
+  sock.onerror = null;
+  sock.onmessage = ev => {
+    let m; try { m = JSON.parse(ev.data); } catch (e) { return; }
+    if (m && m.type !== 'telemetry') handleMessage(t, m);
+  };
+  sock.onclose = () => {
+    if (t.ws !== sock) return;
+    t.ws = null; setOn(t, false);
+    t.timer = setTimeout(() => connectTarget(t), 2000);
+  };
+}
+
+function handleMessage(t, m) {
+  if (!m) return;
+  if (m.type === 'control') {
+    const msg = { enter: '按了 RESET', left: '切換靶', right: '切換靶', homepage: '回到主選單', back: '回到主選單' }[m.directive];
+    if (msg) targetCleared(t, `${t.name}：手機 App ${msg}，已同步清除`);
+    return;
+  }
+  if (Array.isArray(m.data)) m.data.forEach(e => addShot(t, e));
+}
+
+// ---------- Shots ----------
+function addShot(t, e) {
+  const x = Number(e.x), y = Number(e.y), dt = Number(e.t);
+  if (!isFinite(x) || !isFinite(y)) return;
+  const key = `${dt}|${x}|${y}`;
+  if (t.seen.has(key)) return;
+  t.seen.add(key);
+  const [gx, gy] = toScreen(x, y);
+  const btn = Object.entries(UI_BUTTONS).find(([, b]) => gx >= b.x0 && gx <= b.x1 && gy >= b.y0 && gy <= b.y1);
+  if (btn) {
+    const now = Date.now();
+    if (now - t.lastBtn < 500) return;
+    t.lastBtn = now;
+    const msg = { reset: 'RESET 被擊中', prev: '切換到上一個靶', next: '切換到下一個靶', back: '回到主選單' }[btn[0]];
+    targetCleared(t, `${t.name}：${msg}，已同步清除`);
+    return;
+  }
+  const arr = performance.now();
+  const last = lastShotOverall();
+  const idle = parseFloat($('idleSec').value) || 10;
+  if (last && $('autoClear').checked && (arr - last.arr) / 1000 > idle) clearAllRecords(false);
+  const zone = classify(gx, gy, t.zoom);
+  t.shots.push({ dt, arr, x, y, gx, gy, zone, tid: t.id });
+  beep(zone);
+  renderTarget(t); renderSummary();
+}
+function lastShotOverall() {
+  let best = null;
+  for (const t of targets) { const s = t.shots[t.shots.length - 1]; if (s && (!best || s.arr > best.arr)) best = s; }
+  return best;
+}
+function clearTarget(t) { t.shots = []; renderTarget(t); }
+function clearAllRecords(doRender = true) {
+  for (const t of targets) t.shots = [];
+  if (doRender) renderAll();
+}
+function targetCleared(t, msg) {
+  if ($('clearTogether').checked) clearAllRecords(); else { clearTarget(t); renderSummary(); }
+  toast(msg);
+}
+
+// Every shot across all targets in firing order. Splits use the target's own
+// clock when consecutive shots are on the same target, otherwise arrival time.
+function orderedShots() {
+  const all = [];
+  for (const t of targets) for (const s of t.shots) all.push(s);
+  all.sort((a, b) => a.arr - b.arr);
+  let prev = null;
+  for (const s of all) {
+    s.split = !prev ? null
+      : (prev.tid === s.tid && isFinite(prev.dt) && isFinite(s.dt)) ? (s.dt - prev.dt) / 1000
+      : (s.arr - prev.arr) / 1000;
+    prev = s;
+  }
+  return all;
+}
+
+function scoreTarget(t) {
+  const p = POINTS[$('power').value];
+  const n = { A: 0, C: 0, D: 0, M: 0 };
+  t.shots.forEach(s => n[s.zone]++);
+  if ($('mode').value === 'match') {
+    const best = t.shots.filter(s => s.zone !== 'M').map(s => p[s.zone]).sort((a, b) => b - a).slice(0, 2);
+    const misses = 2 - best.length;
+    return { n, count: t.shots.length, misses, score: best.reduce((a, b) => a + b, 0) - MISS_PENALTY * misses };
+  }
+  return { n, count: t.shots.length, misses: n.M, score: n.A * p.A + n.C * p.C + n.D * p.D - MISS_PENALTY * n.M };
+}
+
+// ---------- Rendering ----------
+function drawTargetSvg(svg, z) {
+  const pts = poly => poly.map(([x, y]) => `${CX + x * z},${CY + y * z}`).join(' ');
+  let html = `<rect x="0" y="0" width="720" height="1280" fill="#2a3442"/>` +
+    `<polygon points="${pts(ZONES.D)}" fill="var(--paper)" stroke="var(--paper-line)" stroke-width="2"/>` +
+    ['C', 'A'].map(k => `<polygon points="${pts(ZONES[k])}" fill="none" stroke="var(--paper-line)" stroke-width="2" stroke-dasharray="10 6"/>`).join('');
+  for (const b of Object.values(UI_BUTTONS)) {
+    html += `<rect x="${b.x0}" y="${b.y0}" width="${b.x1 - b.x0}" height="${b.y1 - b.y0}" rx="12" fill="none" stroke="#e0452b" stroke-opacity=".55" stroke-width="3" stroke-dasharray="8 6"/>` +
+      `<text x="${(b.x0 + b.x1) / 2}" y="${(b.y0 + b.y1) / 2 + 14}" text-anchor="middle" font-size="40" font-weight="700" fill="#e0452b" fill-opacity=".7">${b.label}</text>`;
+  }
+  for (const [txt, x] of [['A', 0], ['C', -205], ['C', 205], ['D', -335], ['D', 335]]) {
+    html += `<text x="${CX + x * z}" y="${CY - 60 * z}" text-anchor="middle" font-size="${40 * z}" fill="var(--paper-line)" opacity=".6">${txt}</text>`;
+  }
+  html += `<g class="holes"></g>`;
+  svg.innerHTML = html;
+}
+
+function buildCards() {
+  const grid = $('grid'); grid.innerHTML = '';
+  document.documentElement.style.setProperty('--th', targets.length <= 1 ? 'calc(100vh - 230px)' : targets.length === 2 ? '62vh' : '44vh');
+  if (!targets.length) {
+    grid.innerHTML = '<div class="card empty">還沒有靶機。按上方「搜尋靶機」，或在右下手動加入 IP。</div>';
+    return;
+  }
+  for (const t of targets) {
+    const el = document.createElement('div');
+    el.className = 'card tcard' + (t.wide ? ' wide' : '');
+    el.innerHTML = `
+      <div class="thead">
+        <span class="dot"></span>
+        <input class="name" value="${esc(t.name)}" title="點一下改名字">
+        <span class="ip">${esc(t.ip)}</span>
+        <span class="spacer"></span>
+        <span class="score"></span>
+      </div>
+      <svg class="tsvg" viewBox="0 0 720 1280" xmlns="http://www.w3.org/2000/svg"></svg>
+      <div class="ble">
+        <select class="small zoom" title="要和這台靶機畫面的 Zoom 一致">
+          <option value="1">1.0x</option><option value="0.7">0.7x</option><option value="0.5">0.5x</option>
+        </select>
+        <button class="small" data-act="wide" title="放大／縮小這張靶">⤢</button>
+        <button class="small" data-act="ble" title="連接這台的藍牙">藍牙</button>
+        <button class="small" data-dir="left" title="上一個靶">◀</button>
+        <button class="small" data-dir="enter" title="清除（RESET）">◎ 清除</button>
+        <button class="small" data-dir="right" title="下一個靶">▶</button>
+        <button class="small" data-dir="homepage" title="回主選單">⌂</button>
+        <button class="small" data-act="remove" title="從清單移除">✕</button>
+        <span class="bstat"></span>
+      </div>`;
+    t.el = el;
+    drawTargetSvg(el.querySelector('svg'), t.zoom);
+    const zoomSel = el.querySelector('.zoom'); zoomSel.value = String(t.zoom);
+    zoomSel.addEventListener('change', () => {
+      t.zoom = Number(zoomSel.value); saveTargets();
+      t.shots.forEach(s => { s.zone = classify(s.gx, s.gy, t.zoom); });
+      drawTargetSvg(el.querySelector('svg'), t.zoom); renderTarget(t); renderSummary();
+    });
+    el.querySelector('.name').addEventListener('change', e => {
+      t.name = e.target.value.trim() || t.name; e.target.value = t.name; saveTargets(); renderSummary();
+    });
+    el.querySelectorAll('[data-dir]').forEach(b => b.addEventListener('click', () => sendDirective(t, b.dataset.dir)));
+    el.querySelector('[data-act=ble]').addEventListener('click', () => bleConnect(t));
+    el.querySelector('[data-act=wide]').addEventListener('click', () => { t.wide = !t.wide; el.classList.toggle('wide', t.wide); });
+    el.querySelector('[data-act=remove]').addEventListener('click', () => { removeTarget(t); toast(`已移除 ${t.name}`); });
+    grid.appendChild(el);
+    updateCardStatus(t); renderTarget(t);
+  }
+}
+
+function updateCardStatus(t) {
+  if (!t.el) return;
+  t.el.querySelector('.dot').classList.toggle('on', t.on);
+  t.el.querySelector('.dot').title = t.on ? '已連線' : '未連線，重試中';
+  t.el.querySelector('.bstat').textContent = t.bleText;
+}
+function updateHeaderStatus() {
+  const on = targets.filter(t => t.on).length;
+  $('dot').classList.toggle('on', targets.length > 0 && on === targets.length);
+  $('statusText').textContent = targets.length ? `已連線 ${on}/${targets.length} 台` : '沒有靶機';
+}
+
+// Bigger marks when several small target cards share the screen.
+const holeR = () => (targets.length <= 1 ? 11 : targets.length === 2 ? 14 : 18);
+
+function renderTarget(t) {
+  if (!t.el) return;
+  const g = t.el.querySelector('.holes');
+  const lastOverall = lastShotOverall();
+  g.innerHTML = t.shots.map((s, i) => {
+    const isLast = s === lastOverall;
+    const fill = isLast ? 'var(--last)' : 'var(--hole)';
+    return `<circle cx="${s.gx}" cy="${s.gy}" r="${holeR()}" fill="${fill}" stroke="#fff" stroke-width="3"/>` +
+      `<text x="${s.gx + holeR() + 6}" y="${s.gy - holeR()}" font-size="${holeR() * 2.6}" font-weight="700" fill="${isLast ? 'var(--last)' : '#1d1d1f'}" stroke="#fff" stroke-width="7" paint-order="stroke">${i + 1}</text>`;
+  }).join('');
+  const sc = scoreTarget(t);
+  t.el.querySelector('.score').textContent = `${sc.count} 發 · ${sc.score} 分`;
+}
+
+function renderSummary() {
+  const rows = []; let tot = { count: 0, A: 0, C: 0, D: 0, M: 0, score: 0 };
+  for (const t of targets) {
+    const sc = scoreTarget(t);
+    tot.count += sc.count; tot.A += sc.n.A; tot.C += sc.n.C; tot.D += sc.n.D; tot.M += sc.misses; tot.score += sc.score;
+    rows.push(`<tr><td><span class="dot${t.on ? ' on' : ''}" style="display:inline-block;margin-right:6px"></span>${esc(t.name)}</td>` +
+      `<td>${sc.count}</td><td class="zone-A">${sc.n.A}</td><td class="zone-C">${sc.n.C}</td><td class="zone-D">${sc.n.D}</td>` +
+      `<td class="zone-M">${sc.misses}</td><td>${sc.score}</td></tr>`);
+  }
+  if (targets.length > 1) {
+    rows.push(`<tr class="total"><td>合計</td><td>${tot.count}</td><td class="zone-A">${tot.A}</td><td class="zone-C">${tot.C}</td>` +
+      `<td class="zone-D">${tot.D}</td><td class="zone-M">${tot.M}</td><td>${tot.score}</td></tr>`);
+  }
+  $('sumRows').innerHTML = rows.join('');
+
+  const all = orderedShots();
+  const time = all.reduce((a, s) => a + (s.split || 0), 0);
+  const total = Math.max(0, tot.score);
+  $('totCount').textContent = tot.count;
+  $('totScore').textContent = total;
+  $('totTime').textContent = all.length > 1 ? time.toFixed(2) + 's' : '–';
+  $('totHF').textContent = all.length > 1 && time > 0 ? (total / time).toFixed(2) : '–';
+
+  const byId = Object.fromEntries(targets.map(t => [t.id, t]));
+  const perTargetIndex = {};
+  const logRows = all.map((s, i) => {
+    perTargetIndex[s.tid] = (perTargetIndex[s.tid] || 0) + 1;
+    const t = byId[s.tid];
+    const switched = i > 0 && all[i - 1].tid !== s.tid;
+    return `<tr${i === all.length - 1 ? ' class="latest"' : ''}><td>${i + 1}</td>` +
+      `<td>${esc(t ? t.name : '?')} #${perTargetIndex[s.tid]}</td>` +
+      `<td class="zone-${s.zone}">${s.zone === 'M' ? 'Miss' : s.zone}</td>` +
+      `<td>${s.split == null ? '—' : '+' + s.split.toFixed(2) + 's'}${switched ? ' ↪' : ''}</td></tr>`;
+  });
+  $('logRows').innerHTML = logRows.reverse().join('');
+  // the "latest" highlight on target cards depends on all targets
+  for (const t of targets) if (t.el) {
+    const lastOverall = lastShotOverall();
+    t.el.querySelectorAll('.holes circle').forEach((c, i) => c.setAttribute('fill', t.shots[i] === lastOverall ? 'var(--last)' : 'var(--hole)'));
+    t.el.querySelectorAll('.holes text').forEach((c, i) => c.setAttribute('fill', t.shots[i] === lastOverall ? 'var(--last)' : '#1d1d1f'));
+  }
+}
+function renderAll() { for (const t of targets) renderTarget(t); renderSummary(); updateHeaderStatus(); }
+
+// ---------- Discovery: find every target on the subnet ----------
+const COMMON_PREFIXES = ['192.168.86', '192.168.1', '192.168.0', '192.168.50', '192.168.31', '10.0.0', '10.0.1'];
+let scanGen = 0;
 
 async function httpAlive(host, timeoutMs) {
   const ctl = new AbortController();
   const timer = setTimeout(() => ctl.abort(), timeoutMs);
-  try {
-    await fetch(`http://${host}/websocket`, { mode: 'no-cors', cache: 'no-store', signal: ctl.signal });
-    return true;   // any HTTP answer (even an error page) means a web server is there
-  } catch (e) {
-    return false;
-  } finally { clearTimeout(timer); }
+  try { await fetch(`http://${host}/websocket`, { mode: 'no-cors', cache: 'no-store', signal: ctl.signal }); return true; }
+  catch (e) { return false; }
+  finally { clearTimeout(timer); }
 }
 
-function attach(sock, ip) {
-  if (ws && ws !== sock) { try { ws.onclose = null; ws.close(); } catch (e) {} }
-  ws = sock; failCount = 0;
-  $('ip').value = ip; store('ipsc.ip', ip);
-  setStatus(true, '已連線 ' + ip);
-  sock.onerror = null;
-  sock.onmessage = ev => {
-    let m; try { m = JSON.parse(ev.data); } catch (e) { return; }
-    if (m && m.type === 'telemetry') { setStatus(true, '已連線 ' + ip); return; }
-    handleMessage(m);
-  };
-  sock.onclose = () => {
-    if (ws !== sock) return;
-    setStatus(false, '已斷線，重新連線中…');
-    schedule(connect, 2000);
-  };
-}
-
-function schedule(fn, ms) { clearTimeout(retryTimer); retryTimer = setTimeout(fn, ms); }
-
-function dropSocket() {
-  if (ws) { try { ws.onclose = null; ws.onmessage = null; ws.close(); } catch (e) {} ws = null; }
-}
-
-async function connect() {
-  const my = ++gen;
-  dropSocket();
-  const ip = $('ip').value.trim();
-  if (ip) {
-    setStatus(false, '連線中 ' + ip + '…');
-    const sock = await probe(ip, 3000);
-    if (my !== gen) { if (sock) sock.close(); return; }
-    if (sock) { attach(sock, ip); return; }
-    failCount++;
-  }
-  if (!ip || failCount >= 2) { scan(my); return; }
-  setStatus(false, '連不上 ' + ip + '，稍後重試');
-  schedule(connect, 2000);
-}
-
-async function scan(my = ++gen) {
-  clearTimeout(retryTimer);
-  const last = $('ip').value.trim();
-  const m = last.match(/^(\d+\.\d+\.\d+)\.\d+$/);
-  const prefixes = [...new Set([m && m[1], ...COMMON_PREFIXES].filter(Boolean))];
+// Sweeps each prefix: a plain HTTP ping first (Chrome slows down repeated failed
+// WebSocket attempts but not ordinary requests), then a WebSocket check on the
+// few hosts that answered. Every host that accepts ws://<ip>/websocket is a target.
+async function discover(prefixes, stopAtFirstPrefixWithHits) {
+  const my = ++scanGen;
+  $('find').disabled = true;
+  let added = 0, found = 0;
   for (const prefix of prefixes) {
-    const hosts = [];
-    for (let i = 1; i <= 254; i++) hosts.push(`${prefix}.${i}`);
-    // Stage 1: plain HTTP ping finds hosts with a web server (Chrome slows down
-    // repeated failed WebSocket attempts, but not ordinary requests).
+    const hosts = Array.from({ length: 254 }, (_, i) => `${prefix}.${i + 1}`);
     let next = 0, checked = 0;
     const web = [];
     const worker = async () => {
-      while (next < hosts.length && my === gen) {
+      while (next < hosts.length && my === scanGen) {
         const host = hosts[next++];
         if (await httpAlive(host, 1500)) web.push(host);
         checked++;
-        if (my === gen) setStatus(false, `搜尋靶機中… ${prefix}.x（${checked}/254）`);
+        $('scanText').textContent = `搜尋 ${prefix}.x（${checked}/254）`;
       }
     };
     await Promise.all(Array.from({ length: 32 }, worker));
-    if (my !== gen) return;
-    // Stage 2: only those few hosts get a WebSocket try.
+    if (my !== scanGen) return;
+    let hitsHere = 0;
     for (const host of web) {
+      const known = targets.find(t => t.ip === host);
+      if (known) { if (known.on) { hitsHere++; continue; } }
       const sock = await probe(host, 4000);
-      if (my !== gen) { if (sock) sock.close(); return; }
-      if (sock) { attach(sock, host); toast('找到靶機：' + host); return; }
+      if (my !== scanGen) { if (sock) sock.close(); return; }
+      if (!sock) continue;
+      sock.close(); hitsHere++;
+      if (known) connectTarget(known); else { addTarget(host); added++; }
     }
+    found += hitsHere;
+    if (stopAtFirstPrefixWithHits && hitsHere) break;
   }
-  setStatus(false, '找不到靶機，30 秒後再搜尋');
-  schedule(() => scan(), 30000);
+  $('find').disabled = false;
+  $('scanText').textContent = `找到 ${found} 台` + (added ? `（新增 ${added} 台）` : '');
+  if (added) toast(`找到並加入 ${added} 台新靶機`);
 }
 
-// Restore preferences
-const savedIp = load('ipsc.ip'); if (savedIp) $('ip').value = savedIp;
-const savedZoom = load('ipsc.zoom'); if (savedZoom) $('zoom').value = savedZoom;
-$('ip').addEventListener('change', () => { store('ipsc.ip', $('ip').value.trim()); failCount = 0; connect(); });
-$('find').addEventListener('click', () => { dropSocket(); scan(); });
-$('zoom').addEventListener('change', () => { store('ipsc.zoom', $('zoom').value); drawTarget(); reclassify(); render(); });
-$('clear').addEventListener('click', () => clearAll());
-document.addEventListener('keydown', e => { if (e.key === 'c' || e.key === 'C' || e.key === ' ') { e.preventDefault(); clearAll(); } });
+function knownPrefixes() {
+  const ps = targets.map(t => (t.ip.match(/^(\d+\.\d+\.\d+)\.\d+$/) || [])[1]).filter(Boolean);
+  return [...new Set(ps)];
+}
 
-// ---- BLE remote control ----
-// The target's WebSocket server does not relay commands sent from a computer,
-// so the only live control channel is Bluetooth Low Energy: write
-// {"action":"remote_control","directive":"..."}\r\n to characteristic FFE2 of
-// service FFC9 (device name "GR-WOLF ET ..."); the target ACKs on FFE1.
+// ---------- BLE remote control (per target) ----------
+// Write {"action":"remote_control","directive":"..."}\r\n to characteristic FFE2
+// of service FFC9 (device name "GR-WOLF ET ..."); the target ACKs on FFE1.
 const BLE_SVC = '0000ffc9-0000-1000-8000-00805f9b34fb';
 const BLE_WRITE = '0000ffe2-0000-1000-8000-00805f9b34fb';
 const BLE_NOTIFY = '0000ffe1-0000-1000-8000-00805f9b34fb';
-let bleDevice = null, bleChar = null;
-const lastSent = {};
 
-function bleStatus(on, text) {
-  $('bleDot').classList.toggle('on', on);
-  $('bleStatus').textContent = text;
+function bleSay(t, text) { t.bleText = text; updateCardStatus(t); }
+async function bleWrite(t, obj) {
+  const data = new TextEncoder().encode(JSON.stringify(obj) + '\r\n');
+  if (t.bleChar.writeValueWithResponse) await t.bleChar.writeValueWithResponse(data);
+  else await t.bleChar.writeValue(data);
 }
 
-async function bleConnect() {
-  if (!navigator.bluetooth) {
-    bleStatus(false, '此瀏覽器不支援 Web Bluetooth（請用 Chrome/Edge）');
-    return false;
-  }
+async function bleConnect(t) {
+  if (!navigator.bluetooth) { bleSay(t, '此瀏覽器不支援藍牙（請用 Chrome/Edge）'); return false; }
   try {
-    if (!(bleDevice && bleDevice.gatt.connected)) {
-      // Reconnect to the previously chosen device without showing the picker again.
-      if (bleDevice) {
-        try { await bleDevice.gatt.connect(); } catch (e) { bleDevice = null; }
-      }
-      if (!bleDevice || !bleDevice.gatt.connected) {
-        bleDevice = await navigator.bluetooth.requestDevice({
-          filters: [{ namePrefix: 'GR-WOLF' }, { namePrefix: 'GRWOLF' }],
-          optionalServices: [BLE_SVC],
-        });
-        await bleDevice.gatt.connect();
-      }
+    if (t.bleDevice && !t.bleDevice.gatt.connected) {
+      try { await t.bleDevice.gatt.connect(); } catch (e) { t.bleDevice = null; }
     }
-    const server = bleDevice.gatt;
-    const svc = await server.getPrimaryService(BLE_SVC);
-    bleChar = await svc.getCharacteristic(BLE_WRITE);
+    if (!t.bleDevice || !t.bleDevice.gatt.connected) {
+      bleSay(t, `請在視窗中選「${t.name}」對應的 GR-WOLF 裝置`);
+      const dev = await navigator.bluetooth.requestDevice({
+        filters: [{ namePrefix: 'GR-WOLF' }, { namePrefix: 'GRWOLF' }],
+        optionalServices: [BLE_SVC],
+      });
+      const other = targets.find(o => o !== t && o.bleDevice && o.bleDevice.id === dev.id);
+      if (other) { bleSay(t, `這個裝置已綁在「${other.name}」`); return false; }
+      t.bleDevice = dev;
+      await dev.gatt.connect();
+      dev.addEventListener('gattserverdisconnected', () => { t.bleChar = null; bleSay(t, '藍牙已斷開'); });
+    }
+    const svc = await t.bleDevice.gatt.getPrimaryService(BLE_SVC);
+    t.bleChar = await svc.getCharacteristic(BLE_WRITE);
     try {
-      const notifyChar = await svc.getCharacteristic(BLE_NOTIFY);
-      await notifyChar.startNotifications();
-      notifyChar.addEventListener('characteristicvaluechanged', ev => {
-        let txt = ''; try { txt = new TextDecoder().decode(ev.target.value); } catch (e) { return; }
-        let m; try { m = JSON.parse(txt); } catch (e) { return; }
+      const nc = await svc.getCharacteristic(BLE_NOTIFY);
+      await nc.startNotifications();
+      nc.addEventListener('characteristicvaluechanged', ev => {
+        let m; try { m = JSON.parse(new TextDecoder().decode(ev.target.value)); } catch (e) { return; }
         if (m && m.type === 'notice' && m.action === 'remote_control') {
-          bleStatus(true, m.state === 'success' ? '指令成功 ✓' : '指令失敗：' + (m.failure_reason || m.message || '?'));
-        } else if (m && m.type === 'forward' && m.content && m.content.version) {
-          bleStatus(true, '已連接（韌體 v' + m.content.version + '）');
+          bleSay(t, m.state === 'success' ? '指令成功 ✓' : '指令失敗：' + (m.failure_reason || m.message || '?'));
         }
       });
-      // Ask the target for its firmware version, same as the phone app does.
-      const q = new TextEncoder().encode(JSON.stringify({ action: 'forward', content: { command: 'query_version' } }) + '\r\n');
-      if (bleChar.writeValueWithResponse) await bleChar.writeValueWithResponse(q); else await bleChar.writeValue(q);
-    } catch (e) { /* notify is optional; write still works */ }
-    bleDevice.addEventListener('gattserverdisconnected', () => {
-      bleChar = null; bleStatus(false, '藍牙已斷開');
-    });
-    bleStatus(true, '已連接 ' + (bleDevice.name || '靶機'));
+    } catch (e) { /* notifications are optional */ }
+    bleSay(t, '藍牙已連接 ' + (t.bleDevice.name || ''));
     return true;
   } catch (e) {
-    bleChar = null;
-    bleStatus(false, e.name === 'NotFoundError' ? '未選擇裝置' : '連接失敗：' + (e.message || e));
+    t.bleChar = null;
+    bleSay(t, e.name === 'NotFoundError' ? '未選擇裝置' : '藍牙連接失敗：' + (e.message || e));
     return false;
   }
 }
 
-const DIR_TOAST = {
-  left: '已切換上一個靶，記錄已清除', right: '已切換下一個靶，記錄已清除',
-  enter: '已下達清除（RESET），記錄已清除', homepage: '已回到主選單，記錄已清除',
-  back: '已返回上一層，記錄已清除',
-};
-
-async function sendDirective(dir) {
-  const now = Date.now();
-  if (now - (lastSent[dir] || 0) < 600) return;   // game throttles each directive for 0.5s
-  if (!bleChar) {
-    bleStatus(false, '連接中…');
-    if (!(await bleConnect())) return;
-  }
-  lastSent[dir] = now;
-  const payload = new TextEncoder().encode(JSON.stringify({ action: 'remote_control', directive: dir }) + '\r\n');
-  try {
-    if (bleChar.writeValueWithResponse) await bleChar.writeValueWithResponse(payload);
-    else await bleChar.writeValue(payload);
-  } catch (e) {
-    bleChar = null;
-    bleStatus(false, '發送失敗（' + (e.message || e) + '），再按一次可重連');
-    return;
-  }
-  clearAll();
-  toast(DIR_TOAST[dir] || ('已下達指令：' + dir));
+const lastSent = {};
+async function sendDirective(t, dir, quiet) {
+  const key = t.id + dir, now = Date.now();
+  if (now - (lastSent[key] || 0) < 600) return false;   // the game throttles each directive for 0.5s
+  if (!t.bleChar && !(await bleConnect(t))) return false;
+  lastSent[key] = now;
+  try { await bleWrite(t, { action: 'remote_control', directive: dir }); }
+  catch (e) { t.bleChar = null; bleSay(t, '發送失敗，再按一次可重連'); return false; }
+  clearTarget(t); renderSummary();
+  if (!quiet) toast(`${t.name}：${{ left: '上一個靶', right: '下一個靶', enter: '已清除', homepage: '回主選單' }[dir] || dir}`);
+  return true;
 }
 
-document.querySelectorAll('.ctl button[data-dir]').forEach(btn => {
-  btn.addEventListener('click', () => sendDirective(btn.dataset.dir));
+async function clearEverything() {
+  const linked = targets.filter(t => t.bleChar);
+  const results = await Promise.all(linked.map(t => sendDirective(t, 'enter', true)));
+  clearAllRecords();
+  const ok = results.filter(Boolean).length, missing = targets.length - ok;
+  toast(missing ? `已清除 ${ok} 台靶機；${missing} 台沒連藍牙，只清了電腦紀錄` : `已清除全部 ${ok} 台靶機`);
+}
+
+// ---------- Wire up ----------
+const savedMode = load('ipsc.mode'); if (savedMode) $('mode').value = savedMode;
+const savedPower = load('ipsc.power'); if (savedPower) $('power').value = savedPower;
+$('mode').addEventListener('change', () => { store('ipsc.mode', $('mode').value); renderAll(); });
+$('power').addEventListener('change', () => { store('ipsc.power', $('power').value); renderAll(); });
+$('clear').addEventListener('click', () => clearAllRecords());
+$('clearAllBle').addEventListener('click', clearEverything);
+$('find').addEventListener('click', () => {
+  const ps = knownPrefixes();
+  discover(ps.length ? ps : COMMON_PREFIXES, !ps.length);
 });
-$('bleConnect').addEventListener('click', bleConnect);
-$('bleReconnect').addEventListener('click', bleConnect);
-if (!navigator.bluetooth) bleStatus(false, '此瀏覽器不支援 Web Bluetooth（請用 Chrome/Edge）');
+$('addBtn').addEventListener('click', () => {
+  const ip = $('addIp').value.trim();
+  if (!ip) return;
+  if (addTarget(ip)) { $('addIp').value = ''; toast('已加入 ' + ip); } else toast('這個 IP 已經在清單裡');
+});
+$('addIp').addEventListener('keydown', e => { if (e.key === 'Enter') $('addBtn').click(); });
+document.addEventListener('keydown', e => {
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
+  if (e.key === 'c' || e.key === 'C' || e.key === ' ') { e.preventDefault(); clearAllRecords(); }
+});
 
-function handleMessage(m) {
-  if (!m) return;
-  if (m.type === 'control') {
-    // Phone-app buttons are broadcast too; in the practice screen these clear the target.
-    const msg = { enter: '手機 App 按了 RESET，已同步清除', left: '手機 App 切換靶，已清除',
-                  right: '手機 App 切換靶，已清除', homepage: '靶機回到主選單，已清除',
-                  back: '靶機回到主選單，已清除' }[m.directive];
-    if (msg) { clearAll(); toast(msg); }
-    return;
-  }
-  if (Array.isArray(m.data)) m.data.forEach(addShot);
-}
+// Test hook: __inject(targetIndex, message)
+window.__inject = (i, m) => { const t = targets[i]; if (t) handleMessage(t, m); };
+window.__targets = targets;
 
-window.__inject = handleMessage; // for testing
-drawTarget(); render(); connect();
+loadTargets();
+buildCards(); renderAll();
+targets.forEach(connectTarget);
+// Look for more targets on the same subnet(s) in the background.
+setTimeout(() => {
+  const ps = knownPrefixes();
+  discover(ps.length ? ps : COMMON_PREFIXES, !ps.length);
+}, 1500);
 </script>
 </body>
 </html>
