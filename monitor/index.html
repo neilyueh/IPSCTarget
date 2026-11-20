@@ -73,6 +73,8 @@ main { display: grid; grid-template-columns: minmax(0, 1fr) 400px; gap: 16px; pa
 .note { cursor: pointer; }
 .note { font-size: 12px; color: var(--m); background: color-mix(in srgb, var(--m) 10%, transparent); border-radius: 6px; padding: 6px 8px; }
 .zone-X { color: var(--muted); }
+body.sim .tsvg { cursor: crosshair; }
+#simBtn.on { background: #2563eb; color: #fff; border-color: transparent; font-weight: 600; }
 .ble { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
 .ble .bstat { font-size: 12px; color: var(--muted); flex: 1; min-width: 8em; }
 .side { display: flex; flex-direction: column; gap: 12px; position: sticky; top: 16px; max-height: calc(100vh - 32px); }
@@ -120,6 +122,7 @@ tr.latest td { background: color-mix(in srgb, var(--last) 12%, transparent); }
   <label class="status">
     <select id="power"><option value="minor">Minor</option><option value="major">Major</option></select>
   </label>
+  <button id="simBtn" title="打開後，在網頁的靶圖上點一下就當成中了一發（只在網頁上模擬，不會傳到靶機）">🖱 模擬射擊</button>
   <button id="clear" title="只清除這台電腦上的紀錄">只清電腦紀錄</button>
   <button class="primary" id="clearAllBle" title="透過藍牙對每台已連接的靶機送出清除，並清空電腦紀錄">全部清除</button>
 </header>
@@ -442,6 +445,23 @@ function takePending(t, dir) {
 }
 
 // ---------- Shots ----------
+// Simulated shot: a click on a target picture is turned into the same message the
+// target sends for a real hit (mm, origin bottom-left) and goes through addShot,
+// so scoring, the RESET / ◀ ▶ buttons on the target screen and the log all apply.
+let simMode = false;
+function simulateShot(t, ev) {
+  if (!simMode) return;
+  const svg = ev.currentTarget, m = svg.getScreenCTM();
+  if (!m) return;
+  const pt = new DOMPoint(ev.clientX, ev.clientY).matrixTransform(m.inverse());
+  if (pt.x < 0 || pt.x > 720 || pt.y < 0 || pt.y > 1280) return;
+  // A simulated hit never reaches the target, so it must not change which target the
+  // page thinks is showing; only the RESET box (which just clears) is let through.
+  const btn = Object.entries(UI_BUTTONS).find(([, b]) => pt.x >= b.x0 && pt.x <= b.x1 && pt.y >= b.y0 && pt.y <= b.y1);
+  if (btn && btn[0] !== 'reset') { toast('模擬射擊不會讓靶機換靶；要換靶請用靶卡上方的 ◀ ▶'); return; }
+  addShot(t, { x: pt.x * SENSOR_W / 720, y: (1280 - pt.y) * SENSOR_H / 1280, t: Math.round(performance.now()), sim: true });
+}
+
 function addShot(t, e) {
   const x = Number(e.x), y = Number(e.y), dt = Number(e.t);
   if (!isFinite(x) || !isFinite(y)) return;
@@ -466,7 +486,7 @@ function addShot(t, e) {
   const idle = parseFloat($('idleSec').value) || 10;
   if (last && $('autoClear').checked && (arr - last.arr) / 1000 > idle) clearAllRecords(false);
   const { zone, ns, paper } = classify(gx, gy, t.zoom, t.kind);
-  t.shots.push({ dt, arr, x, y, gx, gy, zone, ns, paper, kind: t.kind, tid: t.id });
+  t.shots.push({ dt, arr, x, y, gx, gy, zone, ns, paper, kind: t.kind, tid: t.id, sim: !!e.sim });
   beep(ns ? 'NS' : zone);
   renderTarget(t); renderSummary();
 }
@@ -526,7 +546,7 @@ const ZONE_TEXT = { A: 'A', C: 'C', D: 'D', M: 'Miss', HC: '遮蔽', NS: '人質
 const zoneText = s => {
   const K = KINDS[TARGET_SEQ[s.kind]];
   const which = K && K.sets && 'ACD'.includes(s.zone) ? `（${K.sets[s.paper || 0].label}）` : '';
-  return ZONE_TEXT[s.zone] + which + (s.ns && s.zone !== 'NS' ? '+人質' : '');
+  return ZONE_TEXT[s.zone] + which + (s.ns && s.zone !== 'NS' ? '+人質' : '') + (s.sim ? '（模擬）' : '');
 };
 const zoneClass = s => 'zone-' + ('ACD'.includes(s.zone) ? s.zone : s.zone === 'X' ? 'X' : 'M');
 
@@ -704,6 +724,7 @@ function buildCards() {
     el.querySelector('[data-act=ble]').addEventListener('click', () => bleConnect(t));
     el.querySelector('[data-act=wide]').addEventListener('click', () => { t.wide = !t.wide; el.classList.toggle('wide', t.wide); updateKindUi(t); });
     el.querySelector('[data-act=remove]').addEventListener('click', () => { removeTarget(t); toast(`已移除 ${t.name}`); });
+    el.querySelector('.tsvg').addEventListener('click', ev => simulateShot(t, ev));
     grid.appendChild(el);
     updateCardStatus(t); updateKindUi(t); renderTarget(t);
   }
@@ -991,6 +1012,12 @@ const savedPower = load('ipsc.power'); if (savedPower) $('power').value = savedP
 $('mode').addEventListener('change', () => { store('ipsc.mode', $('mode').value); renderAll(); });
 $('power').addEventListener('change', () => { store('ipsc.power', $('power').value); renderAll(); });
 $('clear').addEventListener('click', () => clearAllRecords());
+$('simBtn').addEventListener('click', () => {
+  simMode = !simMode;
+  document.body.classList.toggle('sim', simMode);
+  $('simBtn').classList.toggle('on', simMode);
+  toast(simMode ? '模擬射擊：在靶圖上點一下就算中一發（只在網頁上，不傳到靶機）' : '已關閉模擬射擊');
+});
 $('clearAllBle').addEventListener('click', clearEverything);
 $('find').addEventListener('click', () => {
   const ps = knownPrefixes();
