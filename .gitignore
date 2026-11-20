@@ -1,0 +1,9 @@
+# Manufacturer's app package (proprietary, and the binary exceeds GitHub's 100 MB limit)
+GODotTetris.arm64
+GODotTetris.pck
+metadata.json
+start.sh
+backup/
+__MACOSX/
+
+.DS_Store

@@ -1,0 +1,442 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>IPSC 靶監看</title>
+<style>
+:root {
+  --bg: #f4f2ee; --panel: #ffffff; --ink: #1d1d1f; --muted: #6b6b70; --line: #dcd8d0;
+  --paper: #e9d3b0; --paper-line: #6d5a3e; --hole: #1d1d1f; --last: #e0452b;
+  --a: #1f8a4c; --c: #c98a00; --d: #b5541c; --m: #b3261e; --ok: #1f8a4c; --bad: #b3261e;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #17171a; --panel: #222226; --ink: #f2f2f3; --muted: #9a9aa2; --line: #36363c;
+    --paper: #cdb68f; --paper-line: #4e3f29; --last: #ff6a4d;
+    --a: #4cc380; --c: #e8b33a; --d: #e5824a; --m: #ef6a60; --ok: #4cc380; --bad: #ef6a60;
+  }
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink);
+  font-family: -apple-system, "PingFang TC", "Microsoft JhengHei", "Noto Sans TC", sans-serif; }
+header { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; padding: 12px 16px;
+  border-bottom: 1px solid var(--line); background: var(--panel); }
+header h1 { font-size: 18px; margin: 0 8px 0 0; }
+.status { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; color: var(--muted); }
+.dot { width: 10px; height: 10px; border-radius: 50%; background: var(--bad); }
+.dot.on { background: var(--ok); }
+input, select, button { font: inherit; font-size: 14px; padding: 6px 10px; border-radius: 8px;
+  border: 1px solid var(--line); background: var(--bg); color: var(--ink); }
+input#ip { width: 140px; }
+button { cursor: pointer; }
+button.primary { background: var(--last); color: #fff; border-color: transparent; font-weight: 600;
+  font-size: 18px; padding: 10px 22px; }
+.spacer { flex: 1; }
+main { display: grid; grid-template-columns: minmax(0, 1fr) 380px; gap: 16px; padding: 16px;
+  height: calc(100vh - 62px); }
+.board { background: var(--panel); border-radius: 12px; border: 1px solid var(--line);
+  display: flex; align-items: center; justify-content: center; min-height: 0; padding: 8px; }
+.board svg { height: 100%; max-width: 100%; }
+.side { display: flex; flex-direction: column; gap: 12px; min-height: 0; }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 14px; }
+.big { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; text-align: center; }
+.big .v { font-size: 32px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.big .k { font-size: 12px; color: var(--muted); }
+.zones { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; text-align: center; margin-top: 12px; }
+.zones .v { font-size: 22px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.zones .k { font-size: 13px; font-weight: 700; }
+.list { flex: 1; overflow: auto; padding: 0; }
+table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+th, td { padding: 8px 10px; text-align: right; font-size: 15px; border-bottom: 1px solid var(--line); }
+th { position: sticky; top: 0; background: var(--panel); color: var(--muted); font-size: 12px; font-weight: 600; }
+td:first-child, th:first-child { text-align: left; }
+tr.latest td { background: color-mix(in srgb, var(--last) 12%, transparent); }
+tr.newstring td { border-top: 2px solid var(--muted); }
+.zone-A { color: var(--a); font-weight: 700; } .zone-C { color: var(--c); font-weight: 700; }
+.zone-D { color: var(--d); font-weight: 700; } .zone-M { color: var(--m); font-weight: 700; }
+.opts { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; font-size: 14px; color: var(--muted); }
+.opts input[type=number] { width: 64px; }
+#toast { position: fixed; left: 50%; top: 80px; transform: translateX(-50%); background: var(--ink);
+  color: var(--bg); padding: 12px 20px; border-radius: 10px; font-size: 18px; font-weight: 600;
+  opacity: 0; pointer-events: none; transition: opacity .2s; z-index: 10; }
+#toast.show { opacity: 1; }
+.hint { font-size: 12px; color: var(--muted); line-height: 1.5; }
+@media (max-width: 860px) {
+  main { grid-template-columns: 1fr; height: auto; }
+  .board { height: 70vh; }
+  .list { max-height: 50vh; }
+}
+</style>
+</head>
+<body>
+<div id="toast" role="status"></div>
+<header>
+  <h1>IPSC 靶監看</h1>
+  <span class="status"><span class="dot" id="dot"></span><span id="statusText">未連線</span></span>
+  <label class="status">靶機 IP <input id="ip" value="192.168.86.60"></label>
+  <button id="find" title="在同網段重新尋找靶機">重新搜尋</button>
+  <label class="status">靶機縮放
+    <select id="zoom"><option value="1">1.0x</option><option value="0.7">0.7x</option><option value="0.5">0.5x</option></select>
+  </label>
+  <span class="spacer"></span>
+  <button class="primary" id="clear" title="只清除這台電腦上的紀錄；靶機請對 RESET 開一槍或用手機 App">只清電腦紀錄</button>
+</header>
+<main>
+  <div class="board">
+    <svg id="svg" viewBox="0 0 720 1280" xmlns="http://www.w3.org/2000/svg" aria-label="IPSC 靶">
+      <rect x="0" y="0" width="720" height="1280" fill="#2a3442" />
+      <g id="target"></g>
+      <g id="holes"></g>
+    </svg>
+  </div>
+  <div class="side">
+    <div class="card">
+      <div class="big">
+        <div><div class="v" id="count">0</div><div class="k">彈數</div></div>
+        <div><div class="v" id="fastest">–</div><div class="k">最快分段</div></div>
+        <div><div class="v" id="avg">–</div><div class="k">平均分段</div></div>
+      </div>
+      <div class="zones">
+        <div><div class="k zone-A">A</div><div class="v" id="nA">0</div></div>
+        <div><div class="k zone-C">C</div><div class="v" id="nC">0</div></div>
+        <div><div class="k zone-D">D</div><div class="v" id="nD">0</div></div>
+        <div><div class="k zone-M">Miss</div><div class="v" id="nM">0</div></div>
+      </div>
+    </div>
+    <div class="card list">
+      <table>
+        <thead><tr><th>#</th><th>區</th><th>分段</th><th>X mm</th><th>Y mm</th></tr></thead>
+        <tbody id="rows"></tbody>
+      </table>
+    </div>
+    <div class="card">
+      <div class="opts">
+        <label><input type="checkbox" id="autoClear"> 停頓超過</label>
+        <input type="number" id="idleSec" value="10" min="2" max="300"> 秒後，下一發自動開新一輪
+        <label><input type="checkbox" id="beep" checked> 命中提示音</label>
+      </div>
+      <p class="hint">要連靶機一起清：對靶上的 <b>RESET</b>（圖上紅色虛線框）開一槍，或用手機 App 按 RESET，這頁會自動跟著清空，那一槍不算成績。
+      上方紅色「清除」按鈕只清這台電腦上的紀錄。<br>
+      「靶機縮放」要和靶機畫面下方的 Zoom 一致，A/C/D 判定才會準。</p>
+    </div>
+  </div>
+</main>
+<script>
+// Zone polygons from the target's own ipsc_mini scene (local coords, scale 1.0, centred at 360,640)
+const ZONES = {
+  D: [[139,-498],[394,-163],[394,169],[139,490],[-139,490],[-394,169],[-394,-163],[-139,-498]],
+  C: [[136,-495],[273,-157],[273,78],[90,298],[-90,298],[-273,78],[-273,-157],[-136,-495]],
+  A: [[47,-458],[140,-156],[139,-25],[46,112],[-46,112],[-139,-25],[-140,-156],[-47,-458]],
+};
+// On-screen buttons of the target's practice (bootcamp) scene, in 720x1280 screen coords.
+// A hit inside one of these is a button press on the target, not a scored shot.
+const UI_BUTTONS = {
+  reset: { x0: 200, y0: 1140, x1: 520, y1: 1260, label: 'RESET' },
+  prev:  { x0: 20,  y0: 1140, x1: 180, y1: 1260, label: '◀' },
+  next:  { x0: 540, y0: 1140, x1: 700, y1: 1260, label: '▶' },
+  back:  { x0: 10,  y0: 125,  x1: 170, y1: 285,  label: '⌂' },
+};
+const CX = 360, CY = 640;          // target centre on the 720x1280 screen
+const SENSOR_W = 268, SENSOR_H = 476.4; // sensor space (mm), origin bottom-left
+
+const $ = id => document.getElementById(id);
+const svgNS = 'http://www.w3.org/2000/svg';
+let shots = [];        // {t, x, y, gx, gy, zone, split, newString}
+let seen = new Set();
+let ws = null, retry = 1000;
+
+function store(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
+function load(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
+
+function zoom() { return parseFloat($('zoom').value); }
+
+function drawTarget() {
+  const g = $('target'); g.innerHTML = '';
+  const z = zoom();
+  const pts = poly => poly.map(([x, y]) => `${CX + x * z},${CY + y * z}`).join(' ');
+  const d = document.createElementNS(svgNS, 'polygon');
+  d.setAttribute('points', pts(ZONES.D)); d.setAttribute('fill', 'var(--paper)');
+  d.setAttribute('stroke', 'var(--paper-line)'); d.setAttribute('stroke-width', 2);
+  g.appendChild(d);
+  for (const k of ['C', 'A']) {
+    const p = document.createElementNS(svgNS, 'polygon');
+    p.setAttribute('points', pts(ZONES[k])); p.setAttribute('fill', 'none');
+    p.setAttribute('stroke', 'var(--paper-line)'); p.setAttribute('stroke-width', 2);
+    p.setAttribute('stroke-dasharray', '10 6'); g.appendChild(p);
+  }
+  for (const b of Object.values(UI_BUTTONS)) {
+    const r = document.createElementNS(svgNS, 'rect');
+    r.setAttribute('x', b.x0); r.setAttribute('y', b.y0);
+    r.setAttribute('width', b.x1 - b.x0); r.setAttribute('height', b.y1 - b.y0);
+    r.setAttribute('rx', 12); r.setAttribute('fill', 'none');
+    r.setAttribute('stroke', '#e0452b'); r.setAttribute('stroke-opacity', '0.55');
+    r.setAttribute('stroke-width', 3); r.setAttribute('stroke-dasharray', '8 6');
+    g.appendChild(r);
+    const s = document.createElementNS(svgNS, 'text');
+    s.setAttribute('x', (b.x0 + b.x1) / 2); s.setAttribute('y', (b.y0 + b.y1) / 2 + 14);
+    s.setAttribute('text-anchor', 'middle'); s.setAttribute('font-size', 40);
+    s.setAttribute('font-weight', 700); s.setAttribute('fill', '#e0452b'); s.setAttribute('fill-opacity', '0.7');
+    s.textContent = b.label; g.appendChild(s);
+  }
+  const labels = [['A', 0, -60], ['C', -205, -60], ['C', 205, -60], ['D', -335, -60], ['D', 335, -60]];
+  for (const [t, x, y] of labels) {
+    const s = document.createElementNS(svgNS, 'text');
+    s.setAttribute('x', CX + x * z); s.setAttribute('y', CY + y * z);
+    s.setAttribute('text-anchor', 'middle'); s.setAttribute('font-size', 40 * z);
+    s.setAttribute('fill', 'var(--paper-line)'); s.setAttribute('opacity', '0.6'); s.textContent = t;
+    g.appendChild(s);
+  }
+}
+
+function inPoly(x, y, poly) {
+  let inside = false;
+  for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+    const [xi, yi] = poly[i], [xj, yj] = poly[j];
+    if ((yi > y) !== (yj > y) && x < (xj - xi) * (y - yi) / (yj - yi) + xi) inside = !inside;
+  }
+  return inside;
+}
+
+function classify(gx, gy) {
+  const z = zoom(), lx = (gx - CX) / z, ly = (gy - CY) / z;
+  for (const k of ['A', 'C', 'D']) if (inPoly(lx, ly, ZONES[k])) return k;
+  return 'M';
+}
+
+function toScreen(x, y) {
+  return [x * 720 / SENSOR_W, 1280 - y * 1280 / SENSOR_H];
+}
+
+let audioCtx = null;
+function beep(zone) {
+  if (!$('beep').checked) return;
+  try {
+    audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+    const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+    o.frequency.value = zone === 'A' ? 1320 : zone === 'M' ? 330 : 880;
+    g.gain.setValueAtTime(0.15, audioCtx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.12);
+    o.connect(g); g.connect(audioCtx.destination); o.start(); o.stop(audioCtx.currentTime + 0.13);
+  } catch (e) {}
+}
+
+function addShot(e) {
+  const x = Number(e.x), y = Number(e.y), t = Number(e.t);
+  if (!isFinite(x) || !isFinite(y)) return;
+  const key = `${t}|${x}|${y}`;
+  if (seen.has(key)) return;
+  seen.add(key);
+  const [bx, by] = toScreen(x, y);
+  const btn = Object.entries(UI_BUTTONS).find(([, b]) => bx >= b.x0 && bx <= b.x1 && by >= b.y0 && by <= b.y1);
+  if (btn) {
+    const now = Date.now();
+    if (now - lastButtonHit < 500) return; // same cooldown idea as the target
+    lastButtonHit = now;
+    const msg = { reset: '靶機 RESET 被擊中，已同步清除', prev: '靶機切換到上一個靶，已清除',
+                  next: '靶機切換到下一個靶，已清除', back: '靶機回到主選單，已清除' }[btn[0]];
+    clearAll(); toast(msg);
+    return;
+  }
+  const prev = shots[shots.length - 1];
+  const idle = parseFloat($('idleSec').value) || 10;
+  if (prev && $('autoClear').checked && isFinite(t) && isFinite(prev.t) && (t - prev.t) / 1000 > idle) {
+    clearAll(false);
+  }
+  const last = shots[shots.length - 1];
+  const [gx, gy] = toScreen(x, y);
+  const split = last && isFinite(t) && isFinite(last.t) ? (t - last.t) / 1000 : null;
+  const zone = classify(gx, gy);
+  shots.push({ t, x, y, gx, gy, zone, split });
+  beep(zone);
+  render();
+}
+
+function reclassify() { for (const s of shots) s.zone = classify(s.gx, s.gy); }
+
+function render() {
+  const h = $('holes'); h.innerHTML = '';
+  shots.forEach((s, i) => {
+    const isLast = i === shots.length - 1;
+    const c = document.createElementNS(svgNS, 'circle');
+    c.setAttribute('cx', s.gx); c.setAttribute('cy', s.gy); c.setAttribute('r', 11);
+    c.setAttribute('fill', isLast ? 'var(--last)' : 'var(--hole)');
+    c.setAttribute('stroke', '#fff'); c.setAttribute('stroke-width', 2);
+    h.appendChild(c);
+    const t = document.createElementNS(svgNS, 'text');
+    t.setAttribute('x', s.gx + 16); t.setAttribute('y', s.gy - 12);
+    t.setAttribute('font-size', 30); t.setAttribute('font-weight', 700);
+    t.setAttribute('fill', isLast ? 'var(--last)' : '#1d1d1f');
+    t.setAttribute('stroke', '#fff'); t.setAttribute('stroke-width', 5); t.setAttribute('paint-order', 'stroke');
+    t.textContent = i + 1; h.appendChild(t);
+  });
+  const n = { A: 0, C: 0, D: 0, M: 0 };
+  shots.forEach(s => n[s.zone]++);
+  for (const k in n) $('n' + k).textContent = n[k];
+  $('count').textContent = shots.length;
+  const splits = shots.map(s => s.split).filter(v => v != null);
+  $('fastest').textContent = splits.length ? Math.min(...splits).toFixed(2) + 's' : '–';
+  $('avg').textContent = splits.length ? (splits.reduce((a, b) => a + b, 0) / splits.length).toFixed(2) + 's' : '–';
+  const rows = $('rows'); rows.innerHTML = '';
+  for (let i = shots.length - 1; i >= 0; i--) {
+    const s = shots[i], tr = document.createElement('tr');
+    if (i === shots.length - 1) tr.className = 'latest';
+    const zname = s.zone === 'M' ? 'Miss' : s.zone;
+    tr.innerHTML = `<td>${i + 1}</td><td class="zone-${s.zone}">${zname}</td>` +
+      `<td>${s.split == null ? '—' : '+' + s.split.toFixed(2) + 's'}</td>` +
+      `<td>${s.x.toFixed(0)}</td><td>${s.y.toFixed(0)}</td>`;
+    rows.appendChild(tr);
+  }
+}
+
+function clearAll(doRender = true) {
+  shots = [];
+  if (doRender) render();
+}
+
+let lastButtonHit = 0, toastTimer = null;
+function toast(text) {
+  const el = $('toast'); el.textContent = text; el.classList.add('show');
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => el.classList.remove('show'), 3000);
+}
+
+function setStatus(on, text) {
+  $('dot').classList.toggle('on', on);
+  $('statusText').textContent = text;
+}
+
+// ---- Connection + automatic discovery ----
+// The target answers a WebSocket upgrade on ws://<ip>/websocket (port 80).
+// On start we try the last known IP; if that fails twice we sweep the likely
+// home subnets (the last known one first) and keep the first host that opens.
+let gen = 0;            // bumps on every new connect/scan so stale attempts stop
+let failCount = 0, retryTimer = null;
+const COMMON_PREFIXES = ['192.168.86', '192.168.1', '192.168.0', '192.168.50', '192.168.31', '10.0.0', '10.0.1'];
+
+function probe(ip, timeoutMs) {
+  return new Promise(resolve => {
+    let done = false, sock;
+    const finish = ok => {
+      if (done) return; done = true; clearTimeout(timer);
+      if (!ok) { try { sock.onclose = null; sock.close(); } catch (e) {} }
+      resolve(ok ? sock : null);
+    };
+    try { sock = new WebSocket(`ws://${ip}/websocket`); } catch (e) { resolve(null); return; }
+    const timer = setTimeout(() => finish(false), timeoutMs);
+    sock.onopen = () => finish(true);
+    sock.onerror = () => finish(false);
+    sock.onclose = () => finish(false);
+  });
+}
+
+async function httpAlive(host, timeoutMs) {
+  const ctl = new AbortController();
+  const timer = setTimeout(() => ctl.abort(), timeoutMs);
+  try {
+    await fetch(`http://${host}/websocket`, { mode: 'no-cors', cache: 'no-store', signal: ctl.signal });
+    return true;   // any HTTP answer (even an error page) means a web server is there
+  } catch (e) {
+    return false;
+  } finally { clearTimeout(timer); }
+}
+
+function attach(sock, ip) {
+  if (ws && ws !== sock) { try { ws.onclose = null; ws.close(); } catch (e) {} }
+  ws = sock; failCount = 0;
+  $('ip').value = ip; store('ipsc.ip', ip);
+  setStatus(true, '已連線 ' + ip);
+  sock.onerror = null;
+  sock.onmessage = ev => {
+    let m; try { m = JSON.parse(ev.data); } catch (e) { return; }
+    if (m && m.type === 'telemetry') { setStatus(true, '已連線 ' + ip); return; }
+    handleMessage(m);
+  };
+  sock.onclose = () => {
+    if (ws !== sock) return;
+    setStatus(false, '已斷線，重新連線中…');
+    schedule(connect, 2000);
+  };
+}
+
+function schedule(fn, ms) { clearTimeout(retryTimer); retryTimer = setTimeout(fn, ms); }
+
+function dropSocket() {
+  if (ws) { try { ws.onclose = null; ws.onmessage = null; ws.close(); } catch (e) {} ws = null; }
+}
+
+async function connect() {
+  const my = ++gen;
+  dropSocket();
+  const ip = $('ip').value.trim();
+  if (ip) {
+    setStatus(false, '連線中 ' + ip + '…');
+    const sock = await probe(ip, 3000);
+    if (my !== gen) { if (sock) sock.close(); return; }
+    if (sock) { attach(sock, ip); return; }
+    failCount++;
+  }
+  if (!ip || failCount >= 2) { scan(my); return; }
+  setStatus(false, '連不上 ' + ip + '，稍後重試');
+  schedule(connect, 2000);
+}
+
+async function scan(my = ++gen) {
+  clearTimeout(retryTimer);
+  const last = $('ip').value.trim();
+  const m = last.match(/^(\d+\.\d+\.\d+)\.\d+$/);
+  const prefixes = [...new Set([m && m[1], ...COMMON_PREFIXES].filter(Boolean))];
+  for (const prefix of prefixes) {
+    const hosts = [];
+    for (let i = 1; i <= 254; i++) hosts.push(`${prefix}.${i}`);
+    // Stage 1: plain HTTP ping finds hosts with a web server (Chrome slows down
+    // repeated failed WebSocket attempts, but not ordinary requests).
+    let next = 0, checked = 0;
+    const web = [];
+    const worker = async () => {
+      while (next < hosts.length && my === gen) {
+        const host = hosts[next++];
+        if (await httpAlive(host, 1500)) web.push(host);
+        checked++;
+        if (my === gen) setStatus(false, `搜尋靶機中… ${prefix}.x（${checked}/254）`);
+      }
+    };
+    await Promise.all(Array.from({ length: 32 }, worker));
+    if (my !== gen) return;
+    // Stage 2: only those few hosts get a WebSocket try.
+    for (const host of web) {
+      const sock = await probe(host, 4000);
+      if (my !== gen) { if (sock) sock.close(); return; }
+      if (sock) { attach(sock, host); toast('找到靶機：' + host); return; }
+    }
+  }
+  setStatus(false, '找不到靶機，30 秒後再搜尋');
+  schedule(() => scan(), 30000);
+}
+
+// Restore preferences
+const savedIp = load('ipsc.ip'); if (savedIp) $('ip').value = savedIp;
+const savedZoom = load('ipsc.zoom'); if (savedZoom) $('zoom').value = savedZoom;
+$('ip').addEventListener('change', () => { store('ipsc.ip', $('ip').value.trim()); failCount = 0; connect(); });
+$('find').addEventListener('click', () => { dropSocket(); scan(); });
+$('zoom').addEventListener('change', () => { store('ipsc.zoom', $('zoom').value); drawTarget(); reclassify(); render(); });
+$('clear').addEventListener('click', () => clearAll());
+document.addEventListener('keydown', e => { if (e.key === 'c' || e.key === 'C' || e.key === ' ') { e.preventDefault(); clearAll(); } });
+
+function handleMessage(m) {
+  if (!m) return;
+  if (m.type === 'control') {
+    // Phone-app buttons are broadcast too; in the practice screen these clear the target.
+    const msg = { enter: '手機 App 按了 RESET，已同步清除', left: '手機 App 切換靶，已清除',
+                  right: '手機 App 切換靶，已清除', homepage: '靶機回到主選單，已清除',
+                  back: '靶機回到主選單，已清除' }[m.directive];
+    if (msg) { clearAll(); toast(msg); }
+    return;
+  }
+  if (Array.isArray(m.data)) m.data.forEach(addShot);
+}
+
+window.__inject = handleMessage; // for testing
+drawTarget(); render(); connect();
+</script>
+</body>
+</html>
