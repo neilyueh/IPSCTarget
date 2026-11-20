@@ -61,6 +61,7 @@
 |---|---|
 | `monitor/index.html` | 監看網頁本體（用瀏覽器直接打開） |
 | `monitor/target-images.js` | 靶機的靶圖（GR-WOLF 素材，請只自用）；要和 `index.html` 放在一起 |
+| `monitor/start.command` | 雙擊用 `http://localhost:8765` 打開網頁（Chrome 才會記住麥克風、藍牙權限） |
 | `docs/IPSC靶監看-使用說明.pdf` | 圖文使用說明 |
 | `docs/guide/` | 使用說明的原始檔（`guide.html`）與截圖 |
 
@@ -69,7 +70,7 @@
 ## 使用方式
 
 1. 電腦和靶機連同一個 Wi-Fi（收命中資料用）。
-2. 用 **Chrome 或 Edge** 打開 [`monitor/index.html`](monitor/index.html)（直接開檔案即可。要拿到別台電腦用時，複製整個 `monitor` 資料夾：`index.html` 和放靶圖的 `target-images.js` 要放在一起；若藍牙按鈕沒反應，改用 `python3 -m http.server` 開 `http://localhost:8000`）。
+2. **建議雙擊 [`monitor/start.command`](monitor/start.command)** 打開網頁：它會在本機開一個小網頁伺服器，用 Chrome 打開 `http://localhost:8765/index.html`。這樣 Chrome 會**記住麥克風和藍牙權限**，第一次選「造訪這個網站時允許」之後就不會再一直問（直接打開 `index.html` 檔案時 Chrome 記不住，語音每次重新啟動都會再跳出權限視窗）。第一次雙擊若 macOS 擋下，請在 Finder 對它按右鍵 →「打開」。用 localhost 打開時，靶機清單、名稱等設定要重新設定一次（會自動搜尋到靶機）。也可以直接用 **Chrome 或 Edge** 打開 [`monitor/index.html`](monitor/index.html)（要拿到別台電腦用時，複製整個 `monitor` 資料夾：`index.html` 和放靶圖的 `target-images.js` 要放在一起；若藍牙按鈕沒反應，改用 `python3 -m http.server` 開 `http://localhost:8000`）。
 3. 頁面會連上記住的靶機，並自動搜尋同網段的其他靶機。左上角顯示「已連線 N/N 台」就可以開始打。
 4. 每張靶卡的縮放要和那台靶機畫面下方的 Zoom 一致，A/C/D 判定才會準。
 5. 建議把每台靶機的名稱改成好認的（例如「左」「中」「右」），並在路由器替每台固定 IP；頁面靠 IP 分辨靶機。
