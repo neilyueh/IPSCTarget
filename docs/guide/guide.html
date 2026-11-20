@@ -61,17 +61,26 @@ ul { break-inside: avoid; }
 </table>
 <div class="tip"><b>不用安裝任何東西</b>把整個 <code>monitor</code> 資料夾（<code>index.html</code> 和放靶圖的 <code>target-images.js</code>）複製到要看結果的電腦，用瀏覽器打開 <code>index.html</code> 即可。兩個檔案要放在一起。</div>
 
-<h2>2. 快速開始</h2>
-<ol class="steps">
-  <li>靶機開機，進入 IPSC <b>練習畫面</b>（Bootcamp）。</li>
-  <li>在電腦上用 Chrome 打開 <code>monitor/index.html</code>。</li>
-  <li>看左上角：顯示綠點「<b>已連線 1/1 台</b>」就完成連線。網頁會自動找到靶機，並記住 IP。</li>
-  <li>開槍。每一發會依序標上 1、2、3…，最新一發是<b style="color:var(--accent)">紅色</b>。</li>
-  <li>打完一輪，對靶上的 <b>RESET</b> 補一槍（或按網頁的「全部清除」），靶機和網頁一起清空。</li>
-</ol>
+<h2>2. 每次開機後的步驟（重要）</h2>
+<p>靶機每次開機都停在<b>主選單</b>，網頁也不知道靶機現在顯示什麼。請<b>照下面的順序</b>做一次，網頁和靶機才會對得上：</p>
 <figure>
-  <img src="img/single.png" alt="" style="width:68%;margin:0 auto">
-  <figcaption>只有一台靶機時，靶圖會放大填滿畫面</figcaption>
+  <img src="img/startup.png" alt="" style="width:78%;margin:0 auto">
+  <figcaption>開機後依序做 ①～⑤（圖中是剛按完「進靶畫面」、靶機在「靶心」的狀態）</figcaption>
+</figure>
+<table>
+  <tr><th style="width:9mm"></th><th style="width:26%">步驟</th><th>怎麼做／看到什麼</th></tr>
+  <tr><td><span class="n">1</span></td><td><b>網路連線</b>（Wi-Fi）</td><td>靶機開機後，在電腦打開 <code>monitor/index.html</code>。等左上角變成綠點「<b>已連線 1/1 台</b>」、靶卡名稱旁也是綠點。靶機剛開機要一點時間才連上 Wi-Fi，紅點時網頁會自己重試，不用重新整理。</td></tr>
+  <tr><td><span class="n">2</span></td><td><b>藍牙連線</b></td><td>按靶卡下方的 <span class="key">藍牙</span>，在跳出的清單選 <b>GR-WOLF ET …</b>。靶卡下方顯示「<b>藍牙已連接</b>」就完成。</td></tr>
+  <tr><td><span class="n">3</span></td><td>按 <span class="key">進靶畫面</span></td><td>網頁先送「回主選單」，1.5 秒後送「確認」，靶機從主選單進入練習畫面，第一張一定是<b>靶心</b>，網頁也會切到靶心。<b>請看靶機螢幕確認進對了</b>（見下方提醒）。</td></tr>
+  <tr><td><span class="n">4</span></td><td>選要用的靶</td><td>按靶卡上方的 <span class="key">▶</span> 一次到「IPSC 紙靶」，或直接點右邊靶清單裡的靶。靶機和網頁一起換。</td></tr>
+  <tr><td><span class="n">5</span></td><td>確認後開始打</td><td>確認靶機畫面和靶卡上的靶一樣（不一樣按 <span class="key">校正</span>），就可以開槍。每一發依序標上 1、2、3…，最新一發是<b style="color:var(--accent)">紅色</b>；打完一輪對靶上的 <b>RESET</b> 補一槍或按 <span class="key">◎ 清除</span>。</td></tr>
+</table>
+<div class="warn"><b>為什麼一定要這個順序</b>「進靶畫面」和 ◀ ▶ 是透過<b>藍牙</b>送給靶機的，沒連藍牙按了沒有作用；而網頁要靠<b>網路（Wi-Fi）</b>收到靶機的回報才會跟著換靶、收到命中。所以要先等網路綠點、再連藍牙、最後才按「進靶畫面」。<br>
+「進靶畫面」送出的「確認」，會選主選單上<b>目前反白的那一項</b>。如果靶機進到別的畫面，用手機 App 或靶機回到主選單，把反白移到練習畫面後再按一次「進靶畫面」。</div>
+<div class="tip"><b>只看成績、不用藍牙時</b>步驟 2～4 可以跳過：直接在靶機或手機 App 進入練習畫面、選好靶，再在網頁用 <span class="key">校正</span> 選成和靶機一樣的靶即可。</div>
+<figure>
+  <img src="img/single.png" alt="" style="width:52%;margin:0 auto">
+  <figcaption>開始打之後：命中依序標號，右邊是成績與射擊順序</figcaption>
 </figure>
 
 <h2 class="pb">3. 畫面總覽</h2>
@@ -81,16 +90,17 @@ ul { break-inside: avoid; }
 </figure>
 <table style="break-inside:auto;font-size:9.5pt">
   <tr><th style="width:9mm"></th><th style="width:30%">項目</th><th>用途</th></tr>
-  <tr><td><span class="n">1</span></td><td>連線狀態</td><td>「已連線 3/3 台」表示全部連上。綠點＝全部正常，紅點＝有靶機沒連上（會自動重連）。</td></tr>
+  <tr><td><span class="n">1</span></td><td>連線狀態</td><td>「已連線 3/3 台」表示全部連上（網路／Wi-Fi）。綠點＝全部正常，紅點＝有靶機沒連上（會自動重連）。</td></tr>
   <tr><td><span class="n">2</span></td><td>搜尋靶機</td><td>在同網段重新尋找靶機，找到新的會自動加入。打開網頁時也會在背景自動搜尋一次。</td></tr>
   <tr><td><span class="n">3</span></td><td>計分方式</td><td>練習／比賽、Minor／Major，詳見第 6 節。</td></tr>
-  <tr><td><span class="n">4</span></td><td>只清電腦紀錄</td><td>只清空網頁上的紀錄，<b>靶機上的彈痕不會消失</b>。</td></tr>
-  <tr><td><span class="n">5</span></td><td>全部清除</td><td>用藍牙清除每一台已連藍牙的靶機，並清空網頁紀錄。</td></tr>
-  <tr><td><span class="n">6</span></td><td>靶卡</td><td>每台靶機一張，顯示彈孔位置與按鈕，詳見第 4 節。</td></tr>
-  <tr><td><span class="n">7</span></td><td>全場統計</td><td>總彈數、總分、時間、Hit Factor。</td></tr>
-  <tr><td><span class="n">8</span></td><td>成績總表</td><td>每台的彈數、A／C／D／Miss、分數，以及合計。</td></tr>
-  <tr><td><span class="n">9</span></td><td>射擊順序</td><td>依時間列出每一發，詳見第 6 節。</td></tr>
-  <tr><td><span class="n">10</span></td><td>設定</td><td>手動加入 IP、自動開新一輪、RESET 連動、提示音。</td></tr>
+  <tr><td><span class="n">4</span></td><td>🖱 模擬射擊</td><td>打開後在網頁靶圖上點一下就算中一發，用來不開槍測試，詳見第 8 節。</td></tr>
+  <tr><td><span class="n">5</span></td><td>只清電腦紀錄</td><td>只清空網頁上的紀錄，<b>靶機上的彈痕不會消失</b>。</td></tr>
+  <tr><td><span class="n">6</span></td><td>全部清除</td><td>用藍牙清除每一台已連藍牙的靶機，並清空網頁紀錄。</td></tr>
+  <tr><td><span class="n">7</span></td><td>靶卡</td><td>每台靶機一張，顯示彈孔位置與按鈕，詳見第 4 節。</td></tr>
+  <tr><td><span class="n">8</span></td><td>全場統計</td><td>總彈數、總分、時間、Hit Factor。</td></tr>
+  <tr><td><span class="n">9</span></td><td>成績總表</td><td>每台的彈數、A／C／D／Miss／NS、分數，以及合計。</td></tr>
+  <tr><td><span class="n">10</span></td><td>射擊順序</td><td>依時間列出每一發，詳見第 6 節。</td></tr>
+  <tr><td><span class="n">11</span></td><td>設定</td><td>手動加入 IP、自動開新一輪、RESET 連動、提示音。</td></tr>
 </table>
 
 <h2 class="pb">4. 靶卡</h2>
@@ -103,23 +113,26 @@ ul { break-inside: avoid; }
     <h3>上方</h3>
     <table>
       <tr><th style="width:34%">看到的</th><th>說明</th></tr>
-      <tr><td>綠點／紅點</td><td>這台靶機的連線狀態。</td></tr>
+      <tr><td>綠點／紅點</td><td>這台靶機的網路連線狀態。</td></tr>
       <tr><td>名稱（如「中」）</td><td><b>點一下可以改名</b>，例如「左」「中」「右」，會自動記住。</td></tr>
       <tr><td>IP</td><td>這台靶機的網路位址。</td></tr>
       <tr><td>2 發 · 8 分</td><td>這台目前的彈數與分數。</td></tr>
-      <tr><td><span class="key">◀</span> 靶名 <span class="key">▶</span></td><td>目前的靶和它在靶機順序中的位置（如 2/17）；◀ ▶ 換靶，第 5 節說明。</td></tr>
-      <tr><td><span class="key">校正</span></td><td>靶機畫面和網頁不一樣時使用。</td></tr>
+      <tr><td><span class="key">◀</span> 靶名 <span class="key">▶</span></td><td>目前的靶和它在靶機順序中的位置（如 2/17）。◀ ▶ 換到上一張／下一張靶；有連藍牙時靶機一起換。</td></tr>
+      <tr><td>◀ ▶ 旁的小圖</td><td>多台靶機時才有：<b style="color:#3b82f6">藍框</b>是按 ◀ 會換到的靶、<b style="color:#d97706">橘框</b>是按 ▶ 會換到的靶；點小圖等於按旁邊的箭頭。</td></tr>
+      <tr><td><span class="key">校正</span></td><td>靶機畫面和網頁不一樣時，選靶機實際顯示的靶。不送指令給靶機，但會清掉這台目前的紀錄。</td></tr>
+      <tr><td>紅色提醒列</td><td>網頁連上靶機時提醒確認靶種；靶種正確的話點一下就關閉。</td></tr>
     </table>
     <h3>靶圖</h3>
-    <p>和靶機螢幕上的 IPSC 靶一樣。底部紅色虛線框是靶機畫面上的 <b>◀ RESET ▶</b> 按鈕位置，左上角是 <b>⌂</b>（回主選單）。打中這些框不算成績，會被當成按下按鈕。</p>
+    <p>和靶機螢幕上的靶一樣。底部紅色虛線框是靶機畫面上的 <b>◀ RESET ▶</b> 按鈕位置，左上角是 <b>⌂</b>（回主選單）。打中這些框不算成績，會被當成按下按鈕。只有一台靶機（或按 ⤢ 放大）時，靶圖右邊有<b>靶清單</b>（第 5 節）。</p>
     <h3>下方按鈕</h3>
     <table>
       <tr><th style="width:34%">按鈕</th><th>說明</th></tr>
       <tr><td><span class="key">1.0x</span></td><td>縮放，要和這台靶機畫面下方的 Zoom 一樣。</td></tr>
-      <tr><td><span class="key">⤢</span></td><td>放大這張靶（再按一次縮回）。</td></tr>
-      <tr><td><span class="key">藍牙</span></td><td>連接這台的藍牙，第 8 節說明。</td></tr>
-      <tr><td><span class="key">◎ 清除</span></td><td>只清這一台（靶機＋網頁）。</td></tr>
-      <tr><td><span class="key">⌂</span></td><td>靶機回主選單。</td></tr>
+      <tr><td><span class="key">⤢</span></td><td>放大這張靶並顯示靶清單（再按一次縮回）。</td></tr>
+      <tr><td><span class="key">藍牙</span></td><td>連接這台的藍牙（第 9 節）。下方文字顯示藍牙狀態與「指令成功 ✓」。</td></tr>
+      <tr><td><span class="key">◎ 清除</span></td><td>清除這一台的彈痕與紀錄（需藍牙）。</td></tr>
+      <tr><td><span class="key">⌂</span></td><td>靶機回主選單（需藍牙）；網頁會把靶設成「靶心」。</td></tr>
+      <tr><td><span class="key">進靶畫面</span></td><td>從主選單進入練習畫面（需藍牙），開機後使用，見第 2 節。</td></tr>
       <tr><td><span class="key">✕</span></td><td>從清單移除這台。</td></tr>
     </table>
   </div>
@@ -213,17 +226,35 @@ ul { break-inside: avoid; }
 <p>在右下設定勾選「<b>任一台 RESET 就全部清除</b>」，對任何一台 RESET 開槍時，網頁上所有靶機的紀錄都會清空（其他靶機上的彈痕仍要各自清除）。</p>
 <p>勾選「<b>停頓超過 N 秒，下一發自動開新一輪</b>」，休息超過設定秒數後的下一發，會自動從新的一輪開始算。</p>
 
-<h2>8. 藍牙遙控</h2>
+<h2>8. 模擬射擊</h2>
+<p>不開槍也能測試計分、射擊順序和清除：按上方的 <span class="key">🖱 模擬射擊</span>（按鈕變藍），在網頁的靶圖上點一下，就當成那個位置中了一發，射擊順序會標「（模擬）」。再按一次關閉。</p>
+<table>
+  <tr><th style="width:38%">點的位置</th><th>結果</th></tr>
+  <tr><td>靶上任何地方</td><td>當成一發命中，照目前的靶判 A／C／D／Miss</td></tr>
+  <tr><td>靶圖底部的 RESET 框</td><td>清除這台的紀錄</td></tr>
+  <tr><td>◀ ▶ ⌂ 框</td><td>不會換靶（靶機收不到，會對不上）；要換靶請用靶卡上方的 ◀ ▶</td></tr>
+</table>
+<div class="warn"><b>只在網頁上模擬</b>模擬的發不會傳到靶機，靶機螢幕上不會出現彈孔。網頁也沒有辦法讓靶機本身產生一發命中（命中只來自靶機內部的感測器）。模擬的發和真的命中混在一起時分段會不準，測完先按「只清電腦紀錄」再正式打。</div>
+
+<h2>9. 藍牙遙控</h2>
 <ol class="steps">
   <li>按靶卡上的 <span class="key">藍牙</span>（或直接按任一控制鍵）。</li>
   <li>瀏覽器會跳出裝置清單，選<b>這張靶卡對應的</b> <b>GR-WOLF ET …</b>（名稱後面的數字是靶機編號）。</li>
   <li>第一次使用時，macOS 會要求在「系統設定 → 隱私權與安全性 → 藍牙」允許 Chrome。</li>
-  <li>靶卡下方顯示「藍牙已連接」後，就能用 <span class="key">◀</span> <span class="key">▶</span> <span class="key">◎ 清除</span> <span class="key">⌂</span> 控制靶機；按下後會顯示「指令成功 ✓」。</li>
+  <li>靶卡下方顯示「藍牙已連接」後，就能用下表的按鈕控制靶機；靶機受理後會顯示「指令成功 ✓」。</li>
 </ol>
+<table>
+  <tr><th style="width:34%">按鈕</th><th>靶機會做什麼</th></tr>
+  <tr><td><span class="key">◀</span> <span class="key">▶</span>、靶清單</td><td>換上一張／下一張靶；點靶清單會自動連按到那一張</td></tr>
+  <tr><td><span class="key">◎ 清除</span></td><td>練習畫面：清除彈痕（RESET）；主選單：確認選取</td></tr>
+  <tr><td><span class="key">⌂</span></td><td>回主選單</td></tr>
+  <tr><td><span class="key">進靶畫面</span></td><td>回主選單 → 1.5 秒後確認，進入練習畫面（從靶心開始）</td></tr>
+  <tr><td>上方 <span class="key" style="background:var(--accent);color:#fff;border-color:var(--accent)">全部清除</span></td><td>對每台已連藍牙的靶機送出清除</td></tr>
+</table>
 <div class="tip"><b>每次重新整理網頁後</b>藍牙要再選一次裝置（瀏覽器的安全限制）。網頁看不到靶機的名稱，所以有多台時，請自己對照靶機編號選對。</div>
-<p>藍牙連上後，靶卡上方的 <span class="key">◀</span> <span class="key">▶</span> 也會讓靶機一起換靶。按鈕的效果依靶機當時的畫面而定：在練習畫面 <span class="key">◎ 清除</span> 是 RESET；在主選單則是「確認選取」。</p>
 
-<h2>9. 多台靶機</h2>
+
+<h2>10. 多台靶機</h2>
 <figure>
   <img src="img/six.png" alt="">
   <figcaption>六台靶機：一排三張，往下捲動看第二排；右側成績固定在畫面上</figcaption>
@@ -236,7 +267,7 @@ ul { break-inside: avoid; }
   <li><b>移除</b>：按靶卡上的 <span class="key">✕</span>。</li>
 </ul>
 
-<h2>10. 常見問題</h2>
+<h2>11. 常見問題</h2>
 <table>
   <tr><th style="width:36%">狀況</th><th>處理方式</th></tr>
   <tr><td>左上角是紅點、顯示「已連線 0/1 台」</td><td>確認靶機已開機、和電腦在同一個 Wi-Fi；按「搜尋靶機」。若靶機換了 IP，搜尋會自動找到新的。</td></tr>
@@ -245,7 +276,9 @@ ul { break-inside: avoid; }
   <tr><td>靶卡變成「靶心」</td><td>靶機回過主選單，重新進入練習畫面時是靶心。用靶卡的 ▶ 切回要用的靶（有藍牙時靶機一起換）。</td></tr>
   <tr><td>藍牙按鈕沒反應</td><td>改用 Chrome 或 Edge；確認 macOS 已允許 Chrome 使用藍牙；仍不行時，在終端機執行 <code>python3 -m http.server</code>，改開 <code>http://localhost:8000/monitor/</code>。</td></tr>
   <tr><td>「全部清除」後有靶機沒清到</td><td>那台沒有連藍牙。按該靶卡的「藍牙」連上後再試。</td></tr>
-  <tr><td>開機能不能直接進 IPSC 紙靶？</td><td>目前不行。開機後可用藍牙的 ◀ ▶ ◎ 手動切換。</td></tr>
+  <tr><td>開機後怎麼進 IPSC 紙靶？</td><td>照第 2 節：等網路綠點 → 連藍牙 → 按「進靶畫面」→ 按 ▶ 一次。靶機無法開機就直接進紙靶。</td></tr>
+  <tr><td>按「進靶畫面」後靶機進到別的畫面</td><td>主選單的反白不在練習畫面那一項。回主選單把反白移到練習畫面，再按一次「進靶畫面」。</td></tr>
+  <tr><td>按 ◀ ▶ 或「進靶畫面」靶機沒反應</td><td>藍牙沒連上：看靶卡下方是否顯示「藍牙已連接」，沒有就按「藍牙」重新連。</td></tr>
 </table>
 
 </body>
