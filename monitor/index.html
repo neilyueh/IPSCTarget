@@ -62,6 +62,10 @@ tr.newstring td { border-top: 2px solid var(--muted); }
   opacity: 0; pointer-events: none; transition: opacity .2s; z-index: 10; }
 #toast.show { opacity: 1; }
 .hint { font-size: 12px; color: var(--muted); line-height: 1.5; }
+.ctl-head { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; flex-wrap: wrap; }
+.ctl-head strong { font-size: 14px; }
+.ctl { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.ctl button { padding: 10px 4px; font-weight: 600; }
 @media (max-width: 860px) {
   main { grid-template-columns: 1fr; height: auto; }
   .board { height: 70vh; }
@@ -80,7 +84,7 @@ tr.newstring td { border-top: 2px solid var(--muted); }
     <select id="zoom"><option value="1">1.0x</option><option value="0.7">0.7x</option><option value="0.5">0.5x</option></select>
   </label>
   <span class="spacer"></span>
-  <button class="primary" id="clear" title="只清除這台電腦上的紀錄；靶機請對 RESET 開一槍或用手機 App">只清電腦紀錄</button>
+  <button class="primary" id="clear" title="只清除這台電腦上的紀錄；要連靶機一起清，用右側「遠端控制」的清除鍵，或對 RESET 開一槍">只清電腦紀錄</button>
 </header>
 <main>
   <div class="board">
@@ -104,6 +108,23 @@ tr.newstring td { border-top: 2px solid var(--muted); }
         <div><div class="k zone-M">Miss</div><div class="v" id="nM">0</div></div>
       </div>
     </div>
+    <div class="card">
+      <div class="ctl-head">
+        <strong>遠端控制</strong>
+        <span class="status"><span class="dot" id="bleDot"></span><span id="bleStatus" style="font-size:13px;">未連接藍牙</span></span>
+        <span class="spacer"></span>
+        <button id="bleConnect">連接靶機</button>
+      </div>
+      <div class="ctl">
+        <button data-dir="left" title="切換到上一個靶">◀ 上一靶</button>
+        <button data-dir="enter" title="練習畫面＝清除（RESET）；主選單＝確認選取">◎ 清除</button>
+        <button data-dir="right" title="切換到下一個靶">▶ 下一靶</button>
+        <button data-dir="back" title="返回上一層">↩ 返回</button>
+        <button data-dir="homepage" title="回到主選單">⌂ 首頁</button>
+        <button id="bleReconnect" title="重新連接藍牙">⟳</button>
+      </div>
+      <p class="hint">透過藍牙（BLE）直接控制靶機，不經伺服器；需 Chrome/Edge，第一次按會跳出裝置選擇視窗。指令依靶機當前畫面而定（例如「清除」在主選單會變成確認選取）。遊戲端同一指令有 0.5 秒節流。</p>
+    </div>
     <div class="card list">
       <table>
         <thead><tr><th>#</th><th>區</th><th>分段</th><th>X mm</th><th>Y mm</th></tr></thead>
@@ -116,7 +137,7 @@ tr.newstring td { border-top: 2px solid var(--muted); }
         <input type="number" id="idleSec" value="10" min="2" max="300"> 秒後，下一發自動開新一輪
         <label><input type="checkbox" id="beep" checked> 命中提示音</label>
       </div>
-      <p class="hint">要連靶機一起清：對靶上的 <b>RESET</b>（圖上紅色虛線框）開一槍，或用手機 App 按 RESET，這頁會自動跟著清空，那一槍不算成績。
+      <p class="hint">要連靶機一起清：用上方「遠端控制」的 <b>◎ 清除</b>（走藍牙，連靶機畫面一起清），或對靶上的 <b>RESET</b>（圖上紅色虛線框）開一槍，或用手機 App 按 RESET，這頁會自動跟著清空，那一槍不算成績。
       上方紅色「清除」按鈕只清這台電腦上的紀錄。<br>
       「靶機縮放」要和靶機畫面下方的 Zoom 一致，A/C/D 判定才會準。</p>
     </div>
@@ -421,6 +442,106 @@ $('find').addEventListener('click', () => { dropSocket(); scan(); });
 $('zoom').addEventListener('change', () => { store('ipsc.zoom', $('zoom').value); drawTarget(); reclassify(); render(); });
 $('clear').addEventListener('click', () => clearAll());
 document.addEventListener('keydown', e => { if (e.key === 'c' || e.key === 'C' || e.key === ' ') { e.preventDefault(); clearAll(); } });
+
+// ---- BLE remote control ----
+// The target's WebSocket server does not relay commands sent from a computer,
+// so the only live control channel is Bluetooth Low Energy: write
+// {"action":"remote_control","directive":"..."}\r\n to characteristic FFE2 of
+// service FFC9 (device name "GR-WOLF ET ..."); the target ACKs on FFE1.
+const BLE_SVC = '0000ffc9-0000-1000-8000-00805f9b34fb';
+const BLE_WRITE = '0000ffe2-0000-1000-8000-00805f9b34fb';
+const BLE_NOTIFY = '0000ffe1-0000-1000-8000-00805f9b34fb';
+let bleDevice = null, bleChar = null;
+const lastSent = {};
+
+function bleStatus(on, text) {
+  $('bleDot').classList.toggle('on', on);
+  $('bleStatus').textContent = text;
+}
+
+async function bleConnect() {
+  if (!navigator.bluetooth) {
+    bleStatus(false, '此瀏覽器不支援 Web Bluetooth（請用 Chrome/Edge）');
+    return false;
+  }
+  try {
+    if (!(bleDevice && bleDevice.gatt.connected)) {
+      // Reconnect to the previously chosen device without showing the picker again.
+      if (bleDevice) {
+        try { await bleDevice.gatt.connect(); } catch (e) { bleDevice = null; }
+      }
+      if (!bleDevice || !bleDevice.gatt.connected) {
+        bleDevice = await navigator.bluetooth.requestDevice({
+          filters: [{ namePrefix: 'GR-WOLF' }, { namePrefix: 'GRWOLF' }],
+          optionalServices: [BLE_SVC],
+        });
+        await bleDevice.gatt.connect();
+      }
+    }
+    const server = bleDevice.gatt;
+    const svc = await server.getPrimaryService(BLE_SVC);
+    bleChar = await svc.getCharacteristic(BLE_WRITE);
+    try {
+      const notifyChar = await svc.getCharacteristic(BLE_NOTIFY);
+      await notifyChar.startNotifications();
+      notifyChar.addEventListener('characteristicvaluechanged', ev => {
+        let txt = ''; try { txt = new TextDecoder().decode(ev.target.value); } catch (e) { return; }
+        let m; try { m = JSON.parse(txt); } catch (e) { return; }
+        if (m && m.type === 'notice' && m.action === 'remote_control') {
+          bleStatus(true, m.state === 'success' ? '指令成功 ✓' : '指令失敗：' + (m.failure_reason || m.message || '?'));
+        } else if (m && m.type === 'forward' && m.content && m.content.version) {
+          bleStatus(true, '已連接（韌體 v' + m.content.version + '）');
+        }
+      });
+      // Ask the target for its firmware version, same as the phone app does.
+      const q = new TextEncoder().encode(JSON.stringify({ action: 'forward', content: { command: 'query_version' } }) + '\r\n');
+      if (bleChar.writeValueWithResponse) await bleChar.writeValueWithResponse(q); else await bleChar.writeValue(q);
+    } catch (e) { /* notify is optional; write still works */ }
+    bleDevice.addEventListener('gattserverdisconnected', () => {
+      bleChar = null; bleStatus(false, '藍牙已斷開');
+    });
+    bleStatus(true, '已連接 ' + (bleDevice.name || '靶機'));
+    return true;
+  } catch (e) {
+    bleChar = null;
+    bleStatus(false, e.name === 'NotFoundError' ? '未選擇裝置' : '連接失敗：' + (e.message || e));
+    return false;
+  }
+}
+
+const DIR_TOAST = {
+  left: '已切換上一個靶，記錄已清除', right: '已切換下一個靶，記錄已清除',
+  enter: '已下達清除（RESET），記錄已清除', homepage: '已回到主選單，記錄已清除',
+  back: '已返回上一層，記錄已清除',
+};
+
+async function sendDirective(dir) {
+  const now = Date.now();
+  if (now - (lastSent[dir] || 0) < 600) return;   // game throttles each directive for 0.5s
+  if (!bleChar) {
+    bleStatus(false, '連接中…');
+    if (!(await bleConnect())) return;
+  }
+  lastSent[dir] = now;
+  const payload = new TextEncoder().encode(JSON.stringify({ action: 'remote_control', directive: dir }) + '\r\n');
+  try {
+    if (bleChar.writeValueWithResponse) await bleChar.writeValueWithResponse(payload);
+    else await bleChar.writeValue(payload);
+  } catch (e) {
+    bleChar = null;
+    bleStatus(false, '發送失敗（' + (e.message || e) + '），再按一次可重連');
+    return;
+  }
+  clearAll();
+  toast(DIR_TOAST[dir] || ('已下達指令：' + dir));
+}
+
+document.querySelectorAll('.ctl button[data-dir]').forEach(btn => {
+  btn.addEventListener('click', () => sendDirective(btn.dataset.dir));
+});
+$('bleConnect').addEventListener('click', bleConnect);
+$('bleReconnect').addEventListener('click', bleConnect);
+if (!navigator.bluetooth) bleStatus(false, '此瀏覽器不支援 Web Bluetooth（請用 Chrome/Edge）');
 
 function handleMessage(m) {
   if (!m) return;
