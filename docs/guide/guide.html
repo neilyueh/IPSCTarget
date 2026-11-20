@@ -60,7 +60,8 @@ table.tight td, table.tight th { padding-top: 1mm; padding-bottom: 1mm; line-hei
   <tr><td>藍牙（選用）</td><td>要從電腦清除靶機彈痕、換靶時才需要。電腦要在靶機約 10 公尺內。</td></tr>
   <tr><td>固定 IP（建議）</td><td>在路由器替每台靶機固定 IP。網頁用 IP 分辨每一台，固定後名稱才不會對錯。</td></tr>
 </table>
-<div class="tip"><b>不用安裝任何東西</b>把整個 <code>monitor</code> 資料夾（<code>index.html</code> 和放靶圖的 <code>target-images.js</code>）複製到要看結果的電腦，用瀏覽器打開 <code>index.html</code> 即可。兩個檔案要放在一起。</div>
+<div class="tip"><b>不用安裝任何東西</b>把整個 <code>monitor</code> 資料夾複製到要看結果的電腦（裡面的檔案要放在一起）。</div>
+<div class="tip"><b>建議雙擊 <code>start.command</code> 打開網頁</b>它會用 Chrome 打開 <code>http://localhost:8765/index.html</code>。這樣 Chrome 會<b>記住麥克風和藍牙權限</b>：第一次跳出「要求使用麥克風」時選「<b>造訪這個網站時允許</b>」，之後就不會再問。直接打開 <code>index.html</code> 檔案時，Chrome 記不住權限，語音功能會一直跳出權限視窗。第一次雙擊若 macOS 擋下，在 Finder 對它按右鍵 →「打開」。改用 localhost 後，靶機名稱等設定要重新設定一次。</div>
 
 <h2>2. 每次開機後的步驟（重要）</h2>
 <p>靶機每次開機都停在<b>主選單</b>，網頁也不知道靶機現在顯示什麼。請<b>照下面的順序</b>做一次，網頁和靶機才會對得上：</p>
@@ -70,7 +71,7 @@ table.tight td, table.tight th { padding-top: 1mm; padding-bottom: 1mm; line-hei
 </figure>
 <table>
   <tr><th style="width:9mm"></th><th style="width:26%">步驟</th><th>怎麼做／看到什麼</th></tr>
-  <tr><td><span class="n">1</span></td><td><b>網路連線</b>（Wi-Fi）</td><td>靶機開機後，在電腦打開 <code>monitor/index.html</code>。等左上角變成綠點「<b>已連線 1/1 台</b>」、靶卡名稱旁也是綠點。靶機剛開機要一點時間才連上 Wi-Fi，紅點時網頁會自己重試，不用重新整理。</td></tr>
+  <tr><td><span class="n">1</span></td><td><b>網路連線</b>（Wi-Fi）</td><td>靶機開機後，在電腦雙擊 <code>monitor/start.command</code> 打開網頁。等左上角變成綠點「<b>已連線 1/1 台</b>」、靶卡名稱旁也是綠點。靶機剛開機要一點時間才連上 Wi-Fi，紅點時網頁會自己重試，不用重新整理。</td></tr>
   <tr><td><span class="n">2</span></td><td><b>藍牙連線</b></td><td>按靶卡下方的 <span class="key">藍牙</span>，在跳出的清單選 <b>GR-WOLF ET …</b>。靶卡下方顯示「<b>藍牙已連接</b>」就完成。</td></tr>
   <tr><td><span class="n">3</span></td><td>按 <span class="key">進靶畫面</span></td><td>網頁先送「回主選單」，1.5 秒後送「確認」，靶機從主選單進入練習畫面，第一張一定是<b>靶心</b>，網頁也會切到靶心。<b>請看靶機螢幕確認進對了</b>（見下方提醒）。</td></tr>
   <tr><td><span class="n">4</span></td><td>選要用的靶</td><td>按靶卡上方的 <span class="key">▶</span> 一次到「IPSC 紙靶」，或直接點右邊靶清單裡的靶。靶機和網頁一起換。</td></tr>
@@ -314,6 +315,7 @@ table.tight td, table.tight th { padding-top: 1mm; padding-bottom: 1mm; line-hei
   <tr><td>按「進靶畫面」後靶機進到別的畫面</td><td>主選單的反白不在練習畫面那一項。回主選單把反白移到練習畫面，再按一次「進靶畫面」。</td></tr>
   <tr><td>說「重來」後聽到「靶機沒有連藍牙，無法清除」</td><td>有靶機沒連藍牙（例如重新整理過網頁）。按那台靶卡下方的「藍牙」選裝置連上，再說一次「重來」。</td></tr>
   <tr><td>打完兩發沒聽到秒數</td><td>看上方是否停在「⏱ x.xx 秒」：若還在跑，代表有一發沒算到（嗶聲前開槍，或被判成 Miss／人質／遮蔽，看射擊順序）。若已停止，檢查喇叭音量和分頁是否靜音，點一下上方的時間可以再念一次。</td></tr>
+  <tr><td>一直跳出「要求使用麥克風」</td><td>網頁是直接用檔案打開的，Chrome 記不住權限。改用 <code>start.command</code> 打開（<code>http://localhost:8765</code>），選「造訪這個網站時允許」一次即可。</td></tr>
   <tr><td>說「重來」沒反應</td><td>確認 <span class="key">🎤 語音</span> 是綠色、旁邊有顯示聽到的字；電腦要能上網；Chrome 要允許麥克風（網址列旁的麥克風圖示）。仍不行時改用 <code>http://localhost:8000/monitor/</code> 開網頁。</td></tr>
   <tr><td>按 ◀ ▶ 或「進靶畫面」靶機沒反應</td><td>藍牙沒連上：看靶卡下方是否顯示「藍牙已連接」，沒有就按「藍牙」重新連。</td></tr>
 </table>
