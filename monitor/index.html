@@ -1173,8 +1173,10 @@ function drillCheck(at) {
   const n = { A: 0, C: 0, D: 0 };
   for (const id of drill.ids) { const t = targets.find(x => x.id === id); if (t) for (const s of t.shots) if (s.arr >= drill.beepAt && s.zone in n) n[s.zone]++; }
   drill.counts = n;
-  drill.say = `時間 ${time.toFixed(2)} 秒，A ${n.A} 發，C ${n.C} 發，D ${n.D} 發`;
-  drillShow(`⏱ ${time.toFixed(2)} 秒 · A ${n.A} · C ${n.C} · D ${n.D}`);
+  // zones with no hits are left out of what is spoken and shown
+  const parts = ['A', 'C', 'D'].filter(k => n[k] > 0);
+  drill.say = `時間 ${time.toFixed(2)} 秒` + parts.map(k => `，${k} ${n[k]} 發`).join('');
+  drillShow(`⏱ ${time.toFixed(2)} 秒` + parts.map(k => ` · ${k} ${n[k]}`).join(''));
   toast(drill.say);
   drill.sayTimer = setTimeout(() => speak(drill.say), 2000);
 }
