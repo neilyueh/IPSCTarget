@@ -74,6 +74,7 @@ main { display: grid; grid-template-columns: minmax(0, 1fr) 400px; gap: 16px; pa
 .note { font-size: 12px; color: var(--m); background: color-mix(in srgb, var(--m) 10%, transparent); border-radius: 6px; padding: 6px 8px; }
 .zone-X { color: var(--muted); }
 body.sim .tsvg { cursor: crosshair; }
+#voiceBtn.on { background: var(--ok); color: #fff; border-color: transparent; font-weight: 600; }
 #simBtn.on { background: #2563eb; color: #fff; border-color: transparent; font-weight: 600; }
 .ble { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
 .ble .bstat { font-size: 12px; color: var(--muted); flex: 1; min-width: 8em; }
@@ -122,6 +123,8 @@ tr.latest td { background: color-mix(in srgb, var(--last) 12%, transparent); }
   <label class="status">
     <select id="power"><option value="minor">Minor</option><option value="major">Major</option></select>
   </label>
+  <button id="voiceBtn" title="打開後網頁持續聆聽，說「重來」就清除所有靶機和電腦紀錄（需要麥克風；Chrome 會把語音送到 Google 辨識）">🎤 語音</button>
+  <span class="status" id="voiceText"></span>
   <button id="simBtn" title="打開後，在網頁的靶圖上點一下就當成中了一發（只在網頁上模擬，不會傳到靶機）">🖱 模擬射擊</button>
   <button id="clear" title="只清除這台電腦上的紀錄">只清電腦紀錄</button>
   <button class="primary" id="clearAllBle" title="透過藍牙對每台已連接的靶機送出清除，並清空電腦紀錄">全部清除</button>
@@ -1023,6 +1026,69 @@ const savedPower = load('ipsc.power'); if (savedPower) $('power').value = savedP
 $('mode').addEventListener('change', () => { store('ipsc.mode', $('mode').value); renderAll(); });
 $('power').addEventListener('change', () => { store('ipsc.power', $('power').value); renderAll(); });
 $('clear').addEventListener('click', () => clearAllRecords());
+// ---------- Voice command ----------
+// Chrome's built-in speech recognition (sent to Google's servers by Chrome). It listens
+// continuously in Mandarin and restarts itself when Chrome stops it; saying one of the
+// phrases below does the same as the 全部清除 button.
+const VOICE_PHRASES = ['重來', '重新來', '重新開始', '從來', '重來一次'];
+const VOICE_COOLDOWN = 3000;      // one command per 3 s, however many times it is heard
+let voiceOn = false, voiceRec = null, voiceLast = 0, voiceRestart = null;
+
+function voiceSay(text) { $('voiceText').textContent = text; }
+function onVoiceText(text, isFinal) {
+  const heard = text.replace(/\s+/g, '');
+  if (heard) voiceSay(`🎤「${heard.slice(-12)}」`);
+  if (!VOICE_PHRASES.some(w => heard.includes(w))) return false;
+  const now = Date.now();
+  if (now - voiceLast < VOICE_COOLDOWN) return false;
+  voiceLast = now;
+  toast('聽到「重來」：清除所有紀錄，重新開始');
+  clearEverything();
+  return true;
+}
+function startVoice() {
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) { toast('這個瀏覽器不支援語音辨識，請用 Chrome 或 Edge'); return false; }
+  voiceRec = new SR();
+  voiceRec.lang = 'zh-TW'; voiceRec.continuous = true; voiceRec.interimResults = true;
+  let handled = -1;               // index of the last result that already triggered
+  voiceRec.onresult = ev => {
+    for (let i = ev.resultIndex; i < ev.results.length; i++) {
+      if (i === handled) continue;
+      if (onVoiceText(ev.results[i][0].transcript, ev.results[i].isFinal)) handled = i;
+    }
+  };
+  voiceRec.onerror = ev => {
+    if (ev.error === 'not-allowed' || ev.error === 'service-not-allowed') {
+      stopVoice();
+      toast('無法使用麥克風：請在瀏覽器網址列旁允許麥克風；若仍不行，改用 http://localhost 開網頁（README 有說明）');
+    } else if (ev.error === 'network') {
+      voiceSay('🎤 語音辨識需要網路，重試中…');
+    }
+  };
+  voiceRec.onend = () => {        // Chrome ends recognition after a while; keep listening
+    if (!voiceOn) return;
+    clearTimeout(voiceRestart);
+    voiceRestart = setTimeout(() => { try { voiceRec.start(); } catch (e) {} }, 300);
+  };
+  try { voiceRec.start(); } catch (e) { return false; }
+  return true;
+}
+function stopVoice() {
+  voiceOn = false; clearTimeout(voiceRestart);
+  try { voiceRec && voiceRec.stop(); } catch (e) {}
+  voiceRec = null;
+  $('voiceBtn').classList.remove('on'); voiceSay('');
+}
+$('voiceBtn').addEventListener('click', () => {
+  if (voiceOn) { stopVoice(); toast('已關閉語音指令'); return; }
+  voiceOn = true;
+  if (!startVoice()) { stopVoice(); return; }
+  $('voiceBtn').classList.add('on'); voiceSay('🎤 聆聽中…說「重來」');
+  toast('語音指令已開啟：說「重來」就清除所有紀錄');
+});
+window.__voice = onVoiceText;   // test hook
+
 $('simBtn').addEventListener('click', () => {
   simMode = !simMode;
   document.body.classList.toggle('sim', simMode);
