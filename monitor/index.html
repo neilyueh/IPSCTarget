@@ -1036,7 +1036,7 @@ $('clear').addEventListener('click', () => clearAllRecords());
 // 重來 / ⏱ 開始: clear every target, wait a random 3–6 s, beep, then time until
 // every target has two hits (A/C/D on scored targets, any hit on the others).
 // Two seconds after that the time is spoken, to two decimals.
-const drill = { phase: 'idle', beepAt: 0, time: null, ids: [], waitTimer: null, sayTimer: null, tick: null };
+const drill = { phase: 'idle', beepAt: 0, time: null, ids: [], waitTimer: null, preTimer: null, sayTimer: null, tick: null };
 
 function ensureAudio() {
   try {
@@ -1087,22 +1087,51 @@ function speak(text) {
 const drillShow = text => { $('drillText').textContent = text; };
 
 function drillCancel() {
-  clearTimeout(drill.waitTimer); clearTimeout(drill.sayTimer); clearInterval(drill.tick);
+  clearTimeout(drill.waitTimer); clearTimeout(drill.preTimer); clearTimeout(drill.sayTimer); clearInterval(drill.tick);
   drill.phase = 'idle'; drill.time = null;
   drillShow('');
 }
+// The targets a run is for: those on the WebSocket (all of them if none is).
+function drillTargets() { const live = targets.filter(t => t.on); return live.length ? live : targets.slice(); }
+
+// Every target must be cleared over Bluetooth. Reconnect the ones that dropped
+// (no device picker needed for a device chosen earlier); return the ones still missing.
+async function ensureBleAll(list) {
+  await Promise.all(list.filter(t => !t.bleChar && t.bleDevice).map(t => bleConnect(t)));
+  return list.filter(t => !t.bleChar);
+}
+
+// Clear the targets and the page without ending the run (used right before the beep).
+async function clearForBeep(list) {
+  await Promise.all(list.filter(t => t.bleChar).map(t => sendDirective(t, 'enter', true)));
+  for (const t of targets) t.shots = [];
+  for (const t of targets) renderTarget(t);
+  renderSummary();
+}
+
 async function drillStart() {
   ensureAudio();
+  drillCancel();
+  const list = drillTargets();
+  drillShow('⏱ 檢查藍牙…');
+  const missing = await ensureBleAll(list);
+  if (missing.length) {
+    drillShow('⏱ 無法開始：靶機沒連藍牙');
+    toast(`無法清除靶機：${missing.map(t => t.name).join('、')} 沒有連藍牙，請先按靶卡下方的「藍牙」連線`);
+    speak('靶機沒有連藍牙，無法清除');
+    return;
+  }
   await clearEverything();          // clears every target (Bluetooth) and the records; cancels any run
   const delay = 3000 + Math.random() * 3000;
   drill.phase = 'waiting';
   drillShow('⏱ 準備…');
+  // clear once more just before the beep, so the targets are clean when it sounds
+  drill.preTimer = setTimeout(() => { if (drill.phase === 'waiting') clearForBeep(list); }, delay - 1600);
   drill.waitTimer = setTimeout(() => {
     startBeep();
     drill.beepAt = performance.now();
     drill.phase = 'running';
-    const live = targets.filter(t => t.on);
-    drill.ids = (live.length ? live : targets).map(t => t.id);
+    drill.ids = list.map(t => t.id);
     drill.tick = setInterval(() => drillShow(`⏱ ${((performance.now() - drill.beepAt) / 1000).toFixed(2)} 秒 · 已中 ${drillProgress().got}/${drillProgress().need} 發`), 50);
   }, delay);
 }
