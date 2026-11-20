@@ -1101,12 +1101,21 @@ async function ensureBleAll(list) {
   return list.filter(t => !t.bleChar);
 }
 
-// Clear the targets and the page without ending the run (used right before the beep).
+// Clear a target by pressing ◀ then ▶ over Bluetooth: the target re-creates the
+// target picture when it switches, so every hole (and its own stats) goes away and it
+// ends on the same target as before. The page follows both presses, so it stays in sync.
+async function flipClear(t) {
+  if (!(await sendDirective(t, 'left', true))) return false;
+  await sleep(150);
+  return sendDirective(t, 'right', true);
+}
+// Clear the targets and the page without ending the run (used at the start and right before the beep).
 async function clearForBeep(list) {
-  await Promise.all(list.filter(t => t.bleChar).map(t => sendDirective(t, 'enter', true)));
+  const res = await Promise.all(list.filter(t => t.bleChar).map(flipClear));
   for (const t of targets) t.shots = [];
   for (const t of targets) renderTarget(t);
   renderSummary();
+  return res.filter(Boolean).length;
 }
 
 async function drillStart() {
@@ -1121,12 +1130,20 @@ async function drillStart() {
     speak('靶機沒有連藍牙，無法清除');
     return;
   }
-  await clearEverything();          // clears every target (Bluetooth) and the records; cancels any run
+  drillShow('⏱ 清除靶機…');
+  const ok = await clearForBeep(list);   // ◀ ▶ on every target, then clear the page
+  if (ok < list.length) {
+    drillShow('⏱ 無法開始：有靶機沒清除');
+    toast(`有 ${list.length - ok} 台靶機沒有回應清除，請檢查藍牙連線`);
+    speak('有靶機沒有清除，請檢查藍牙');
+    return;
+  }
+  toast(`已清除 ${ok} 台靶機，準備嗶聲`);
   const delay = 3000 + Math.random() * 3000;
   drill.phase = 'waiting';
   drillShow('⏱ 準備…');
   // clear once more just before the beep, so the targets are clean when it sounds
-  drill.preTimer = setTimeout(() => { if (drill.phase === 'waiting') clearForBeep(list); }, delay - 1600);
+  drill.preTimer = setTimeout(() => { if (drill.phase === 'waiting') clearForBeep(list); }, delay - 2000);
   drill.waitTimer = setTimeout(() => {
     startBeep();
     drill.beepAt = performance.now();
