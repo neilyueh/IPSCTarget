@@ -265,7 +265,8 @@ table.tight td, table.tight th { padding-top: 1mm; padding-bottom: 1mm; line-hei
 </ol>
 <table>
   <tr><th style="width:34%">項目</th><th>說明</th></tr>
-  <tr><td>聽得懂的說法</td><td>「重來」「重新開始」「重新來」「重來一次」（句子裡含有就算，例如「好，重來」）</td></tr>
+  <tr><td>聽得懂的說法</td><td>「重來」「重新開始」「重新來」，以及常被聽錯的同音字（從來、沖來、衝來、崇來、重開、重頭…）。句子裡含有就算，例如「好，重來」。網頁會比對 Chrome 給的多個候選結果，不只最可能的那一個。</td></tr>
+  <tr><td>聽錯了怎麼辦</td><td>右下設定會列出「最近聽到」的字，例如被聽成「中來」，按旁邊的 <span class="key">＋</span> 就加入；也可以在「語音『重來』也接受」欄自己輸入，用逗號分開，會記住。</td></tr>
   <tr><td>防止誤觸</td><td>3 秒內重複說只算一次</td></tr>
   <tr><td>沒連藍牙的靶機</td><td>只清網頁紀錄，提示會說幾台沒清到</td></tr>
 </table>
@@ -316,7 +317,7 @@ table.tight td, table.tight th { padding-top: 1mm; padding-bottom: 1mm; line-hei
   <tr><td>說「重來」後聽到「靶機沒有連藍牙，無法清除」</td><td>有靶機沒連藍牙（例如重新整理過網頁）。按那台靶卡下方的「藍牙」選裝置連上，再說一次「重來」。</td></tr>
   <tr><td>打完兩發沒聽到秒數</td><td>看上方是否停在「⏱ x.xx 秒」：若還在跑，代表有一發沒算到（嗶聲前開槍，或被判成 Miss／人質／遮蔽，看射擊順序）。若已停止，檢查喇叭音量和分頁是否靜音，點一下上方的時間可以再念一次。</td></tr>
   <tr><td>一直跳出「要求使用麥克風」</td><td>網頁是直接用檔案打開的，Chrome 記不住權限。改用 <code>start.command</code> 打開（<code>http://localhost:8765</code>），選「造訪這個網站時允許」一次即可。</td></tr>
-  <tr><td>說「重來」沒反應</td><td>確認 <span class="key">🎤 語音</span> 是綠色、旁邊有顯示聽到的字；電腦要能上網；Chrome 要允許麥克風（網址列旁的麥克風圖示）。仍不行時改用 <code>http://localhost:8000/monitor/</code> 開網頁。</td></tr>
+  <tr><td>說「重來」常常沒反應</td><td>看右下「最近聽到」被聽成什麼字，按＋加入；或說清楚一點、靠近麥克風一點。確認 <span class="key">🎤 語音</span> 是綠色、旁邊有顯示聽到的字；電腦要能上網；Chrome 要允許麥克風（網址列旁的麥克風圖示）。仍不行時改用 <code>http://localhost:8000/monitor/</code> 開網頁。</td></tr>
   <tr><td>按 ◀ ▶ 或「進靶畫面」靶機沒反應</td><td>藍牙沒連上：看靶卡下方是否顯示「藍牙已連接」，沒有就按「藍牙」重新連。</td></tr>
 </table>
 

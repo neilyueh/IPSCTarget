@@ -165,6 +165,12 @@ tr.latest td { background: color-mix(in srgb, var(--last) 12%, transparent); }
         <label><input type="checkbox" id="clearTogether"> 任一台 RESET 就全部清除</label>
         <label><input type="checkbox" id="beep" checked> 命中提示音</label>
       </div>
+      <div class="opts" style="margin-top:8px">
+        <label title="說出這些字也算「重來」；用逗號分開">語音「重來」也接受：<input id="voiceWords" style="width:170px" placeholder="例如：從頭,再來"></label>
+      </div>
+      <div class="hint" id="voiceHeard" hidden></div>
+      <div class="opts" style="display:none">
+      </div>
       <p class="hint">
         <b>清除</b>：「全部清除」透過藍牙清每台已連接的靶機並清空電腦紀錄；靶卡下方的 ◎ 只清那一台。對靶上的 RESET 開一槍或用手機 App 按 RESET，對應那台的紀錄也會自動清空。<br>
         <b>計分</b>：Miss 扣 10 分；打在黑色遮蔽區 0 分（表格算在 Miss 欄）；打到人質每發扣 10 分（穿過人質又打到靶，兩者都算）。比賽模式每張靶取最佳 2 發，不足 2 發算 Miss。時間是第一發到最後一發（不含起始嗶聲）。<br>
@@ -1190,7 +1196,26 @@ window.__drill = drill;   // test hook
 // Chrome's built-in speech recognition (sent to Google's servers by Chrome). It listens
 // continuously in Mandarin and restarts itself when Chrome stops it; saying one of the
 // phrases below does the same as the 全部清除 button.
-const VOICE_PHRASES = ['重來', '重新來', '重新開始', '從來', '重來一次'];
+// 重來 is often heard as a word that sounds the same, so those count too. More words
+// can be added in the settings box; the last few things heard are listed there with
+// a button to add them.
+const VOICE_PHRASES = ['重來', '重来', '從來', '从来', '崇來', '蟲來', '沖來', '衝來', '充來', '重開', '重新來', '重新開始', '重頭', '從頭來'];
+const extraVoiceWords = () => ($('voiceWords').value || '').split(/[,，、\s]+/).map(w => w.trim()).filter(Boolean);
+const voiceHeardList = [];
+function noteHeard(text) {
+  if (!text || voiceHeardList[0] === text) return;
+  voiceHeardList.unshift(text); voiceHeardList.length = Math.min(voiceHeardList.length, 6);
+  const box = $('voiceHeard');
+  box.hidden = false;
+  box.innerHTML = '最近聽到（聽錯的字可以按＋加入「重來」）：' + voiceHeardList.map((h, i) =>
+    `<span style="white-space:nowrap">「${esc(h)}」<button class="small" data-heard="${i}" style="padding:0 6px">＋</button></span>`).join(' ');
+  box.querySelectorAll('[data-heard]').forEach(b => b.addEventListener('click', () => {
+    const w = voiceHeardList[Number(b.dataset.heard)];
+    const words = extraVoiceWords(); if (!words.includes(w)) words.push(w);
+    $('voiceWords').value = words.join(','); store('ipsc.voiceWords', $('voiceWords').value);
+    toast(`已加入：說「${w}」也算「重來」`);
+  }));
+}
 const VOICE_COOLDOWN = 3000;      // one command per 3 s, however many times it is heard
 let voiceOn = false, voiceRec = null, voiceLast = 0, voiceRestart = null;
 
@@ -1198,7 +1223,7 @@ function voiceSay(text) { $('voiceText').textContent = text; }
 function onVoiceText(text, isFinal) {
   const heard = text.replace(/\s+/g, '');
   if (heard) voiceSay(`🎤「${heard.slice(-12)}」`);
-  if (!VOICE_PHRASES.some(w => heard.includes(w))) return false;
+  if (!VOICE_PHRASES.concat(extraVoiceWords()).some(w => heard.includes(w))) return false;
   const now = Date.now();
   if (now - voiceLast < VOICE_COOLDOWN) return false;
   voiceLast = now;
@@ -1210,12 +1235,16 @@ function startVoice() {
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
   if (!SR) { toast('這個瀏覽器不支援語音辨識，請用 Chrome 或 Edge'); return false; }
   voiceRec = new SR();
-  voiceRec.lang = 'zh-TW'; voiceRec.continuous = true; voiceRec.interimResults = true;
+  voiceRec.lang = 'zh-TW'; voiceRec.continuous = true; voiceRec.interimResults = true; voiceRec.maxAlternatives = 5;
   let handled = -1;               // index of the last result that already triggered
   voiceRec.onresult = ev => {
     for (let i = ev.resultIndex; i < ev.results.length; i++) {
       if (i === handled) continue;
-      if (onVoiceText(ev.results[i][0].transcript, ev.results[i].isFinal)) handled = i;
+      const res = ev.results[i];
+      for (let k = 0; k < res.length; k++) {
+        if (onVoiceText(res[k].transcript, res.isFinal)) { handled = i; break; }
+      }
+      if (handled !== i && res.isFinal) noteHeard(res[0].transcript.replace(/\s+/g, ''));
     }
   };
   voiceRec.onerror = ev => {
@@ -1248,7 +1277,10 @@ $('voiceBtn').addEventListener('click', () => {
   $('voiceBtn').classList.add('on'); voiceSay('🎤 聆聽中…說「重來」');
   toast('語音指令已開啟：說「重來」就清除所有紀錄');
 });
+const savedVoiceWords = load('ipsc.voiceWords'); if (savedVoiceWords) $('voiceWords').value = savedVoiceWords;
+$('voiceWords').addEventListener('change', () => store('ipsc.voiceWords', $('voiceWords').value));
 window.__voice = onVoiceText;   // test hook
+window.__heard = noteHeard;
 
 $('simBtn').addEventListener('click', () => {
   simMode = !simMode;
