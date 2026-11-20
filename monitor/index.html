@@ -1054,12 +1054,35 @@ function startBeep() {
     o.connect(g); g.connect(audioCtx.destination); o.start(t0); o.stop(t0 + 0.46);
   } catch (e) {}
 }
+// Spoken time. Chrome quirks handled here: an utterance can be dropped if it is
+// garbage-collected before it starts (keep a reference) or if speak() follows
+// cancel() immediately (wait a moment); the voice is picked explicitly.
+let speechVoice = null, lastUtterance = null;
+function pickVoice() {
+  if (!window.speechSynthesis) return null;
+  const vs = speechSynthesis.getVoices();
+  return vs.find(v => /美佳|Meijia/i.test(v.name)) || vs.find(v => /^zh[-_]TW/i.test(v.lang))
+      || vs.find(v => /^zh/i.test(v.lang)) || null;
+}
+if (window.speechSynthesis) {
+  speechVoice = pickVoice();
+  speechSynthesis.addEventListener('voiceschanged', () => { speechVoice = pickVoice(); });
+}
 function speak(text) {
-  try {
+  if (!window.speechSynthesis) { toast('這個瀏覽器不能語音播報'); return; }
+  const go = () => {
     const u = new SpeechSynthesisUtterance(text);
-    u.lang = 'zh-TW'; u.rate = 1;
-    speechSynthesis.cancel(); speechSynthesis.speak(u);
-  } catch (e) {}
+    u.lang = 'zh-TW'; u.rate = 1; u.volume = 1;
+    if (speechVoice) u.voice = speechVoice;
+    let started = false;
+    u.onstart = () => { started = true; };
+    u.onerror = ev => toast(`語音播報失敗（${ev.error}）：${text}`);
+    lastUtterance = u;
+    speechSynthesis.resume();
+    speechSynthesis.speak(u);
+    setTimeout(() => { if (!started && lastUtterance === u) toast(`沒有播出聲音，請檢查喇叭音量或點一下上方的時間重播：${text}`); }, 2500);
+  };
+  if (speechSynthesis.speaking || speechSynthesis.pending) { speechSynthesis.cancel(); setTimeout(go, 150); } else go();
 }
 const drillShow = text => { $('drillText').textContent = text; };
 
@@ -1080,25 +1103,34 @@ async function drillStart() {
     drill.phase = 'running';
     const live = targets.filter(t => t.on);
     drill.ids = (live.length ? live : targets).map(t => t.id);
-    drill.tick = setInterval(() => drillShow(`⏱ ${((performance.now() - drill.beepAt) / 1000).toFixed(2)} 秒`), 50);
+    drill.tick = setInterval(() => drillShow(`⏱ ${((performance.now() - drill.beepAt) / 1000).toFixed(2)} 秒 · 已中 ${drillProgress().got}/${drillProgress().need} 發`), 50);
   }, delay);
+}
+// Hits that count toward the run on one target: after the beep, A/C/D on scored targets.
+function drillHits(t) {
+  const scored = !!KINDS[TARGET_SEQ[t.kind]];
+  return t.shots.filter(s => s.arr >= drill.beepAt && (!scored || 'ACD'.includes(s.zone))).length;
+}
+function drillProgress() {
+  let got = 0, need = 0;
+  for (const id of drill.ids) { const t = targets.find(x => x.id === id); if (!t) continue; need += 2; got += Math.min(2, drillHits(t)); }
+  return { got, need };
 }
 function drillCheck(at) {
   if (drill.phase !== 'running') return;
-  const done = drill.ids.every(id => {
-    const t = targets.find(x => x.id === id);
-    if (!t) return true;
-    const scored = !!KINDS[TARGET_SEQ[t.kind]];
-    return t.shots.filter(s => s.arr >= drill.beepAt && (!scored || 'ACD'.includes(s.zone))).length >= 2;
-  });
+  const done = drill.ids.every(id => { const t = targets.find(x => x.id === id); return !t || drillHits(t) >= 2; });
   if (!done) return;
   const time = (at - drill.beepAt) / 1000;
   drill.phase = 'done'; drill.time = time;
   clearInterval(drill.tick);
   drillShow(`⏱ ${time.toFixed(2)} 秒`);
+  toast(`時間 ${time.toFixed(2)} 秒`);
   drill.sayTimer = setTimeout(() => speak(`時間 ${time.toFixed(2)} 秒`), 2000);
 }
 $('drillBtn').addEventListener('click', () => drillStart());
+$('drillText').addEventListener('click', () => { if (drill.phase === 'done') speak(`時間 ${drill.time.toFixed(2)} 秒`); });
+$('drillText').title = '計時結束後點一下可以再念一次';
+$('drillText').style.cursor = 'pointer';
 window.__drill = drill;   // test hook
 
 // ---------- Voice command ----------
