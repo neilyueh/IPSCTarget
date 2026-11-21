@@ -62,6 +62,8 @@
 | `monitor/index.html` | 監看網頁本體（用瀏覽器直接打開） |
 | `monitor/target-images.js` | 靶機的靶圖（GR-WOLF 素材，請只自用）；要和 `index.html` 放在一起 |
 | `monitor/start.command` | 雙擊用 `http://localhost:8765` 打開網頁（Chrome 才會記住麥克風、藍牙權限） |
+| `monitor/install-autostart.command` | 雙擊一次，讓這台 Mac 每次登入都自動開好網頁伺服器 |
+| `monitor/uninstall-autostart.command` | 雙擊取消登入自動啟動 |
 | `docs/IPSC靶監看-使用說明.pdf` | 圖文使用說明 |
 | `docs/guide/` | 使用說明的原始檔（`guide.html`）與截圖 |
 
@@ -75,6 +77,25 @@
 4. 每張靶卡的縮放要和那台靶機畫面下方的 Zoom 一致，A/C/D 判定才會準。
 5. 建議把每台靶機的名稱改成好認的（例如「左」「中」「右」），並在路由器替每台固定 IP；頁面靠 IP 分辨靶機。
 6. 要遠端控制：按靶卡上的「藍牙」（或直接按任一控制鍵），在跳出的裝置清單選**那一台**對應的 **GR-WOLF ET …**，允許藍牙權限即可（macOS 第一次會要求在「系統設定 → 隱私權與安全性 → 藍牙」允許 Chrome）。控制走藍牙，和 Wi-Fi 連線互相獨立。重新整理頁面後要再選一次裝置。
+
+### 登入後自動開網頁伺服器（建議固定使用的 Mac）
+
+不想每次都雙擊 `start.command`，可以讓 Mac 登入後就自動在背景開好網頁伺服器，之後隨時用 Chrome 打開 **http://localhost:8765/index.html**（建議加入書籤）。
+
+在新的 Mac 上設定：
+
+1. 把 repo clone 到想放的地方，例如 `git clone <repo 網址> ~/IPSCTarget`。**不要放在「桌面」「文件」「下載」**，macOS 會擋背景程式讀這幾個資料夾，網頁會打不開。
+2. 確認有 `python3`：在終端機打 `python3 --version`；沒有的話執行 `xcode-select --install`（或用 Homebrew 安裝）。
+3. 雙擊 [`monitor/install-autostart.command`](monitor/install-autostart.command)（第一次若被擋，在 Finder 按右鍵 →「打開」），或在終端機執行 `~/IPSCTarget/monitor/install-autostart.command`。看到「完成！」就好了。
+4. 用 Chrome 打開 `http://localhost:8765/index.html`，允許麥克風一次，之後就會記住。
+
+說明：
+
+- 它會建立 `~/Library/LaunchAgents/com.ipsctarget.monitor-web.plist`，用 macOS 的 launchd 在每次登入時執行 `python3 -m http.server 8765 --bind 127.0.0.1`，提供 `monitor` 資料夾。只有這台電腦自己連得到。
+- 伺服器意外停掉時約 10 秒內會自動重開；錯誤訊息記在 `~/Library/Logs/ipsctarget-web.log`。
+- 搬動專案資料夾或更新 python 後，再雙擊一次 `install-autostart.command` 即可（可以重複執行）。
+- 裝好之後 `start.command` 照樣能用：它看到伺服器已經在跑，就直接打開 Chrome。
+- 取消：雙擊 [`monitor/uninstall-autostart.command`](monitor/uninstall-autostart.command)。
 
 ## 運作原理
 
