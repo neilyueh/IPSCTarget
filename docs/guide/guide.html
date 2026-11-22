@@ -49,7 +49,7 @@ table.tight td, table.tight th { padding-top: 1mm; padding-bottom: 1mm; line-hei
   <h1>IPSC 靶監看<br>使用說明</h1>
   <div class="sub">在電腦上即時看每一發打在哪裡、統計多台靶機的成績，並遠端控制靶機。<br>適用 GR-WOLF FlexTarget IPSC 電子靶。</div>
   <img src="img/overview.png" alt="">
-  <div class="meta">網頁檔案：<code>monitor/index.html</code>　·　建議瀏覽器：Chrome 或 Edge</div>
+  <div class="meta">網頁檔案：<code>monitor/index.html</code>　·　建議瀏覽器：Chrome 或 Edge　·　iPad 也能看（第 12 節）</div>
 </section>
 
 <h2>1. 使用前準備</h2>
@@ -303,7 +303,24 @@ table.tight td, table.tight th { padding-top: 1mm; padding-bottom: 1mm; line-hei
   <li><b>移除</b>：按靶卡上的 <span class="key">✕</span>。</li>
 </ul>
 
-<h2>12. 常見問題</h2>
+<h2>12. 從 iPad 看</h2>
+<p>家裡的 iPad（或手機）連同一個 Wi-Fi，就能在旁邊即時看彈著、分數和計時。Mac 上要用 <code>start.command</code> 或登入自動啟動開網頁伺服器（見第 1 節）。</p>
+<ol class="steps">
+  <li>在 Mac 的 Chrome 打開 <code>http://localhost:8765/</code>，上方「搜尋靶機」旁會顯示 <span class="key">📱 iPad 用：http://192.168.x.x:8765/</span>，這是 Mac 目前的區網 IP（點一下可複製）。</li>
+  <li>在 iPad 的 Safari 或 Chrome 輸入這個網址，<b>開頭的 <code>http://</code> 要打</b>。建議加入書籤或「加入主畫面」。</li>
+  <li>iPad 第一次打開時會自動搜尋靶機，也可以在右下「手動加入 IP」輸入靶機 IP。靶機清單和名稱是每個瀏覽器各自記的，iPad 要自己設定一次。</li>
+</ol>
+<table class="tight">
+  <tr><th style="width:36%">功能</th><th>Mac（<code>localhost:8765</code>）</th><th>iPad（<code>192.168.x.x:8765</code>）</th></tr>
+  <tr><td>即時彈著、成績、Hit Factor、射擊順序</td><td>✓</td><td>✓</td></tr>
+  <tr><td>藍牙：自動進 IPSC 紙靶、換靶、全部清除</td><td>✓</td><td>✕（按鈕會自動藏起來，靶卡顯示「只能看」）</td></tr>
+  <tr><td>語音「重來」</td><td>✓</td><td>✕（http 區網網址拿不到麥克風）</td></tr>
+  <tr><td>⏱ 開始（嗶聲計時）</td><td>✓</td><td>只計時，不能清除靶機，建議在 Mac 上按</td></tr>
+</table>
+<div class="warn"><b>Mac 自己請用 localhost</b>iPad 上所有瀏覽器（包括 Chrome）都不支援網頁藍牙，所以藍牙控制一定要在 Mac 的 Chrome 上做。Mac 也不要改打 <code>192.168.x.x</code> 的網址：Chrome 只在 <code>localhost</code> 開放藍牙和麥克風，用區網網址會顯示「藍牙只能在 localhost 使用」。</div>
+<div class="tip"><b>網址會變嗎？</b>Mac 的 IP 是路由器分配的，偶爾會變；網頁上方顯示的網址會跟著更新，iPad 書籤打不開時回 Mac 看一下新網址。想固定的話，在路由器把這台 Mac 設成固定 IP（和靶機一樣）。</div>
+
+<h2>13. 常見問題</h2>
 <table class="tight">
   <tr><th style="width:36%">狀況</th><th>處理方式</th></tr>
   <tr><td>左上角是紅點、顯示「已連線 0/1 台」</td><td>確認靶機已開機、和電腦在同一個 Wi-Fi；按「搜尋靶機」。若靶機換了 IP，搜尋會自動找到新的。</td></tr>
@@ -321,6 +338,8 @@ table.tight td, table.tight th { padding-top: 1mm; padding-bottom: 1mm; line-hei
   <tr><td>一直跳出「要求使用麥克風」</td><td>網頁是直接用檔案打開的，Chrome 記不住權限。改用 <code>start.command</code> 打開（<code>http://localhost:8765</code>），選「造訪這個網站時允許」一次即可。</td></tr>
   <tr><td>書籤 <code>localhost:8765</code> 打不開</td><td>登入自動啟動沒在跑。雙擊 <code>start.command</code> 先打開；要恢復自動啟動，再雙擊一次 <code>install-autostart.command</code>（搬過專案資料夾、更新 python 後也要重跑）。錯誤訊息在 <code>~/Library/Logs/ipsctarget-web.log</code>。</td></tr>
   <tr><td>說「重來」常常沒反應</td><td>看右下「最近聽到」被聽成什麼字，按＋加入；或說清楚一點、靠近麥克風一點。確認 <span class="key">🎤 語音</span> 是綠色、旁邊有顯示聽到的字；電腦要能上網；Chrome 要允許麥克風（網址列旁的麥克風圖示）。仍不行時改用 <code>http://localhost:8000/monitor/</code> 開網頁。</td></tr>
+  <tr><td>iPad 打不開 <code>192.168.x.x:8765</code></td><td>確認 iPad 連的是家裡同一個 Wi-Fi（不是訪客網路或行動網路）、網址開頭有打 <code>http://</code>。用 iPad 的 Chrome 時，到 iPad「設定 → 隱私權與安全性 → 區域網路」打開 Chrome；或改用 Safari 試試。Mac 第一次若問「是否允許 python3 接受連入連線」，選「允許」。</td></tr>
+  <tr><td>顯示「此瀏覽器不支援藍牙」</td><td>在 iPad 上這是正常的，iPad 只能看。在 Mac 上出現，代表網址打成 <code>192.168.x.x</code>，改用 <code>http://localhost:8765/</code>。</td></tr>
   <tr><td>按 ◀ ▶ 或「進靶畫面」靶機沒反應</td><td>藍牙沒連上：看靶卡下方是否顯示「藍牙已連接」，沒有就按「藍牙」重新連。</td></tr>
 </table>
 
