@@ -114,7 +114,8 @@ tr.latest td { background: color-mix(in srgb, var(--last) 12%, transparent); }
 <header>
   <h1>IPSC 靶監看</h1>
   <span class="status"><span class="dot" id="dot"></span><span id="statusText">未連線</span></span>
-  <button id="find" title="在同網段搜尋所有靶機">搜尋靶機</button>
+  <button id="find" title="在同網段搜尋所有靶機；勾選「自動進 IPSC 紙靶」時，同時連藍牙並讓每台靶機進入 IPSC 紙靶">搜尋靶機</button>
+  <label class="status" title="按「搜尋靶機」時，自動連藍牙，讓靶機回主選單 → 進入練習畫面 → 切到 IPSC 紙靶"><input type="checkbox" id="autoIpsc" checked> 自動進 IPSC 紙靶</label>
   <span class="status" id="scanText"></span>
   <span class="spacer"></span>
   <label class="status">計分
@@ -314,8 +315,8 @@ function beep(zone) {
 const targets = [];
 let nextId = 1;
 
-function makeTarget({ ip, name, zoom, kind }) {
-  return { id: nextId++, ip, name: name || `靶 ${targets.length + 1}`, zoom: Number(zoom) || 1,
+function makeTarget({ ip, name, zoom, kind, bleId }) {
+  return { id: nextId++, ip, name: name || `靶 ${targets.length + 1}`, zoom: Number(zoom) || 1, bleId: bleId || '',
     kind: Number.isInteger(kind) && kind >= 0 && kind < TARGET_SEQ.length ? kind : DEFAULT_KIND,
     note: '', lastDir: {}, pending: [], moving: false,
     ws: null, on: false, gen: 0, retry: 2000, timer: null,
@@ -323,7 +324,7 @@ function makeTarget({ ip, name, zoom, kind }) {
     bleDevice: null, bleChar: null, bleText: '藍牙未連接', wide: false, el: null };
 }
 function saveTargets() {
-  store('ipsc.targets', JSON.stringify(targets.map(t => ({ ip: t.ip, name: t.name, zoom: t.zoom, kind: t.kind }))));
+  store('ipsc.targets', JSON.stringify(targets.map(t => ({ ip: t.ip, name: t.name, zoom: t.zoom, kind: t.kind, bleId: t.bleId }))));
 }
 function loadTargets() {
   let list = null;
@@ -912,13 +913,52 @@ async function bleWrite(t, obj) {
   else await t.bleChar.writeValue(data);
 }
 
-async function bleConnect(t) {
+// Chrome can remember a device chosen earlier (navigator.bluetooth.getDevices), so the
+// page reconnects without the device picker. Each target keeps its device id; a lone
+// target with no saved id takes the only remembered GR-WOLF device.
+// Returns false when this Chrome has no getDevices (it needs the flag
+// chrome://flags/#enable-web-bluetooth-new-permissions-backend).
+async function bleRestore() {
+  if (!navigator.bluetooth || !navigator.bluetooth.getDevices) return false;
+  let devs = [];
+  try { devs = await navigator.bluetooth.getDevices(); } catch (e) { return true; }
+  devs = devs.filter(d => !d.name || /^GR-?WOLF/i.test(d.name));
+  const free = d => !targets.some(o => o.bleDevice && o.bleDevice.id === d.id);
+  for (const t of targets) {
+    if (t.bleDevice) continue;
+    let d = t.bleId && devs.find(x => x.id === t.bleId);
+    if (!d && !t.bleId && targets.length === 1 && devs.length === 1) d = devs[0];
+    if (d && free(d)) { t.bleDevice = d; t.bleId = d.id; }
+  }
+  saveTargets();
+  return true;
+}
+
+// A remembered device has to be seen advertising before Chrome will connect to it.
+async function bleGattConnect(dev) {
+  try { await dev.gatt.connect(); return; } catch (e) { if (!dev.watchAdvertisements) throw e; }
+  const ac = new AbortController();
+  await new Promise((resolve, reject) => {
+    const timer = setTimeout(() => { ac.abort(); reject(new Error('收不到靶機的藍牙訊號（靶機開機了嗎？在 10 公尺內嗎？）')); }, 10000);
+    dev.addEventListener('advertisementreceived', () => { clearTimeout(timer); ac.abort(); resolve(); }, { once: true });
+    dev.watchAdvertisements({ signal: ac.signal }).catch(e => { if (e.name !== 'AbortError') { clearTimeout(timer); reject(e); } });
+  });
+  await dev.gatt.connect();
+}
+
+// noPicker: never open the device picker (it needs a fresh click, so only one target
+// per click can use it); report instead that the device has to be chosen once.
+async function bleConnect(t, noPicker) {
   if (!navigator.bluetooth) { bleSay(t, '此瀏覽器不支援藍牙（請用 Chrome/Edge）'); return false; }
   try {
+    if (!t.bleDevice) await bleRestore();
     if (t.bleDevice && !t.bleDevice.gatt.connected) {
-      try { await t.bleDevice.gatt.connect(); } catch (e) { t.bleDevice = null; }
+      bleSay(t, '藍牙連線中…');
+      try { await bleGattConnect(t.bleDevice); }
+      catch (e) { if (noPicker) throw e; t.bleDevice = null; }   // otherwise fall back to the picker
     }
     if (!t.bleDevice || !t.bleDevice.gatt.connected) {
+      if (noPicker) { bleSay(t, '請按這台的「藍牙」選一次裝置，之後會自動連'); return false; }
       bleSay(t, `請在視窗中選「${t.name}」對應的 GR-WOLF 裝置`);
       const dev = await navigator.bluetooth.requestDevice({
         filters: [{ namePrefix: 'GR-WOLF' }, { namePrefix: 'GRWOLF' }],
@@ -926,9 +966,13 @@ async function bleConnect(t) {
       });
       const other = targets.find(o => o !== t && o.bleDevice && o.bleDevice.id === dev.id);
       if (other) { bleSay(t, `這個裝置已綁在「${other.name}」`); return false; }
-      t.bleDevice = dev;
+      t.bleDevice = dev; t.bleId = dev.id; saveTargets();
       await dev.gatt.connect();
-      dev.addEventListener('gattserverdisconnected', () => { t.bleChar = null; bleSay(t, '藍牙已斷開'); });
+    }
+    if (!t.bleDevice.ipscWatched) {
+      const dev = t.bleDevice;
+      dev.ipscWatched = true;
+      dev.addEventListener('gattserverdisconnected', () => { if (t.bleDevice === dev) { t.bleChar = null; bleSay(t, '藍牙已斷開'); } });
     }
     const svc = await t.bleDevice.gatt.getPrimaryService(BLE_SVC);
     t.bleChar = await svc.getCharacteristic(BLE_WRITE);
@@ -1015,13 +1059,49 @@ async function goToKind(t, want) {
   toast(steps ? `${t.name}：切換中斷，請確認靶機畫面` : `${t.name}：已切換到「${SEQ_LABEL[TARGET_SEQ[t.kind]]}」`);
 }
 
+// Home → enter (練習 is the first, highlighted item of a fresh main menu) → the
+// practice screen always opens on 靶心, so one ▶ gives the IPSC paper target.
+// Resolves to '' on success, otherwise the step that failed.
+async function enterIpsc(t) {
+  if (t.moving) return '正在切換中';
+  t.moving = true; updateKindUi(t);
+  try {
+    if (!(await sendDirective(t, 'homepage', true))) return '回主選單';
+    await sleep(1500);
+    if (!(await sendDirective(t, 'enter', true))) return '進入練習畫面';
+    await sleep(2000);   // let the practice screen load
+    if (t.kind !== 0) setKind(t, 0);
+    if (!(await sendDirective(t, 'right', true))) return '切到 IPSC 紙靶';
+    return '';
+  } finally { t.moving = false; updateKindUi(t); }
+}
+
 async function enterTargetScreen(t) {
-  toast(`${t.name}：嘗試從主選單進入靶畫面…`);
-  const h = await sendDirective(t, 'homepage', true);
-  if (!h) { toast(`${t.name}：無法送出 homepage（請確認藍牙）`); return; }
-  await sleep(1500);
-  const e = await sendDirective(t, 'enter', true);
-  toast(e ? `${t.name}：已送出進入指令（請看靶機螢幕確認）` : `${t.name}：無法送出 enter（請確認藍牙）`);
+  toast(`${t.name}：進入 IPSC 紙靶中…`);
+  const fail = await enterIpsc(t);
+  toast(fail ? `${t.name}：「${fail}」沒成功（請確認藍牙和靶機畫面）` : `${t.name}：已進入 IPSC 紙靶（請看靶機螢幕確認）`);
+}
+
+// 搜尋靶機 with 自動進 IPSC 紙靶: connect Bluetooth while the click still counts as
+// a user gesture (only one target per click may open the device picker), then send
+// every connected target to the IPSC paper target. The Wi-Fi scan runs alongside.
+async function autoIpsc() {
+  if (!targets.length) return;
+  const hasGetDevices = await bleRestore();
+  let picker = true;
+  const results = await Promise.all(targets.map(async t => {
+    if (!t.bleChar) {
+      const usePicker = picker && !t.bleDevice;
+      if (usePicker) picker = false;
+      if (!(await bleConnect(t, !usePicker))) return { t, fail: '藍牙' };
+    }
+    return { t, fail: await enterIpsc(t) };
+  }));
+  const bad = results.filter(r => r.fail);
+  if (!bad.length) toast(`已讓 ${results.length} 台靶機進入 IPSC 紙靶，可以開始射擊`);
+  else toast(bad.map(r => `${r.t.name}：${r.fail}沒成功`).join('；') +
+    (!hasGetDevices && bad.some(r => r.fail === '藍牙')
+      ? '。要讓 Chrome 記住藍牙裝置，請到 chrome://flags 打開「Web Bluetooth new permissions backend」' : ''));
 }
 
 async function clearEverything() {
@@ -1292,7 +1372,10 @@ $('clearAllBle').addEventListener('click', clearEverything);
 $('find').addEventListener('click', () => {
   const ps = knownPrefixes();
   discover(ps.length ? ps : COMMON_PREFIXES, !ps.length);
+  if ($('autoIpsc').checked) autoIpsc();
 });
+const savedAutoIpsc = load('ipsc.autoIpsc'); if (savedAutoIpsc) $('autoIpsc').checked = savedAutoIpsc === '1';
+$('autoIpsc').addEventListener('change', () => store('ipsc.autoIpsc', $('autoIpsc').checked ? '1' : '0'));
 $('addBtn').addEventListener('click', () => {
   const ip = $('addIp').value.trim();
   if (!ip) return;
@@ -1311,6 +1394,8 @@ window.__targets = targets;
 loadTargets();
 buildCards(); renderAll();
 targets.forEach(connectTarget);
+// Reconnect remembered Bluetooth devices in the background (no picker, no commands).
+bleRestore().then(ok => { if (ok) targets.filter(t => t.bleDevice && !t.bleChar).forEach(t => bleConnect(t, true)); });
 // Look for more targets on the same subnet(s) in the background.
 setTimeout(() => {
   const ps = knownPrefixes();
