@@ -65,21 +65,20 @@ table.tight td, table.tight th { padding-top: 1mm; padding-bottom: 1mm; line-hei
 <div class="tip"><b>固定使用的 Mac：登入後自動準備好（只要設定一次）</b>雙擊 <code>monitor/install-autostart.command</code>，看到「完成！」即可。之後每次登入，Mac 都會自動在背景開好網頁伺服器，直接用 Chrome 打開 <code>http://localhost:8765/index.html</code> 就好（建議加入書籤），不用再雙擊 <code>start.command</code>。換一台 Mac 時，把專案 clone 或複製過去再雙擊一次即可。專案資料夾<b>不要放在「桌面」「文件」「下載」</b>，macOS 會擋背景程式讀這幾個資料夾，網頁會打不開。要取消時雙擊 <code>uninstall-autostart.command</code>。</div>
 
 <h2>2. 每次開機後的步驟（重要）</h2>
-<p>靶機每次開機都停在<b>主選單</b>，網頁也不知道靶機現在顯示什麼。請<b>照下面的順序</b>做一次，網頁和靶機才會對得上：</p>
+<p>靶機每次開機都停在<b>主選單</b>。只要等網路連上、按一下「搜尋靶機」，網頁就會自動連藍牙、讓靶機進入 <b>IPSC 紙靶</b>：</p>
 <figure>
   <img src="img/startup.png" alt="" style="width:78%;margin:0 auto">
-  <figcaption>開機後依序做 ①～⑤（圖中是剛按完「進靶畫面」、靶機在「靶心」的狀態）</figcaption>
+  <figcaption>① 等左上角綠點 → ② 按「搜尋靶機」（旁邊勾「自動進 IPSC 紙靶」）→ ③ 約 5 秒後靶卡是「IPSC 紙靶」就可以打</figcaption>
 </figure>
 <table>
   <tr><th style="width:9mm"></th><th style="width:26%">步驟</th><th>怎麼做／看到什麼</th></tr>
   <tr><td><span class="n">1</span></td><td><b>網路連線</b>（Wi-Fi）</td><td>靶機開機後，在電腦雙擊 <code>monitor/start.command</code> 打開網頁（已設定登入自動啟動的話，直接用 Chrome 書籤打開 <code>http://localhost:8765/index.html</code>）。等左上角變成綠點「<b>已連線 1/1 台</b>」、靶卡名稱旁也是綠點。靶機剛開機要一點時間才連上 Wi-Fi，紅點時網頁會自己重試，不用重新整理。</td></tr>
-  <tr><td><span class="n">2</span></td><td><b>藍牙連線</b></td><td>按靶卡下方的 <span class="key">藍牙</span>，在跳出的清單選 <b>GR-WOLF ET …</b>。靶卡下方顯示「<b>藍牙已連接</b>」就完成。</td></tr>
-  <tr><td><span class="n">3</span></td><td>按 <span class="key">進靶畫面</span></td><td>網頁先送「回主選單」，1.5 秒後送「確認」，靶機從主選單進入練習畫面，第一張一定是<b>靶心</b>，網頁也會切到靶心。<b>請看靶機螢幕確認進對了</b>（見下方提醒）。</td></tr>
-  <tr><td><span class="n">4</span></td><td>選要用的靶</td><td>按靶卡上方的 <span class="key">▶</span> 一次到「IPSC 紙靶」，或直接點右邊靶清單裡的靶。靶機和網頁一起換。</td></tr>
-  <tr><td><span class="n">5</span></td><td>確認後開始打</td><td>確認靶機畫面和靶卡上的靶一樣（不一樣按 <span class="key">校正</span>），就可以開槍。每一發依序標上 1、2、3…，最新一發是<b style="color:var(--accent)">紅色</b>；打完一輪對靶上的 <b>RESET</b> 補一槍或按 <span class="key">◎ 清除</span>。</td></tr>
+  <tr><td><span class="n">2</span></td><td>按 <span class="key">搜尋靶機</span></td><td>旁邊的「<b>自動進 IPSC 紙靶</b>」要打勾（預設已勾）。網頁會自動：連藍牙 → 讓靶機回主選單 → 確認進入練習畫面 → 按 ▶ 切到 IPSC 紙靶，<b>約 5 秒</b>完成，網頁也一起切到紙靶，並提示「已讓 1 台靶機進入 IPSC 紙靶，可以開始射擊」。<br><b>第一次</b>會跳出藍牙清單，選 <b>GR-WOLF ET …</b> 一次即可；之後 Chrome 會記住，不用再選（見下方提醒）。</td></tr>
+  <tr><td><span class="n">3</span></td><td>確認後開始打</td><td>看一眼靶機螢幕是 IPSC 紙靶、和靶卡一樣（不一樣按 <span class="key">校正</span>），就可以開槍。每一發依序標上 1、2、3…，最新一發是<b style="color:var(--accent)">紅色</b>；打完一輪對靶上的 <b>RESET</b> 補一槍或按 <span class="key">◎ 清除</span>。要用別的靶，按靶卡上方的 <span class="key">▶</span> 或點靶清單。</td></tr>
 </table>
-<div class="warn"><b>為什麼一定要這個順序</b>「進靶畫面」和 ◀ ▶ 是透過<b>藍牙</b>送給靶機的，沒連藍牙按了沒有作用；而網頁要靠<b>網路（Wi-Fi）</b>收到靶機的回報才會跟著換靶、收到命中。所以要先等網路綠點、再連藍牙、最後才按「進靶畫面」。<br>
-「進靶畫面」送出的「確認」，會選主選單上<b>目前反白的那一項</b>。如果靶機進到別的畫面，用手機 App 或靶機回到主選單，把反白移到練習畫面後再按一次「進靶畫面」。</div>
+<div class="tip"><b>Chrome 記住藍牙裝置</b>選過一次 GR-WOLF 後，之後打開網頁時會在背景自動連藍牙，按「搜尋靶機」也不會再跳清單。如果每次都還要選，在 Chrome 網址列打開 <code>chrome://flags</code>，搜尋 <b>Web Bluetooth new permissions backend</b>，設成 <b>Enabled</b> 後重開 Chrome。沒有這個設定也能用，只是每次要在清單點一下靶機。</div>
+<div class="warn"><b>請看靶機螢幕確認進對了</b>網頁沒辦法知道靶機實際在哪個畫面。「確認」會選主選單上反白的那一項；回到主選單時反白通常在第一項「練習」。如果靶機進到別的畫面，用手機 App 或靶機回到主選單、把反白移到「練習」，再按一次「搜尋靶機」或靶卡的「進靶畫面」。<br>
+搜尋靶機進行中（旁邊顯示「搜尋 …」）也可以直接按，藍牙和進紙靶會馬上開始。不想自動進紙靶時，把「自動進 IPSC 紙靶」的勾拿掉（會記住）。</div>
 <div class="tip"><b>只看成績、不用藍牙時</b>步驟 2～4 可以跳過：直接在靶機或手機 App 進入練習畫面、選好靶，再在網頁用 <span class="key">校正</span> 選成和靶機一樣的靶即可。</div>
 <figure>
   <img src="img/single.png" alt="" style="width:52%;margin:0 auto">
@@ -94,7 +93,7 @@ table.tight td, table.tight th { padding-top: 1mm; padding-bottom: 1mm; line-hei
 <table class="tight" style="break-inside:auto;font-size:9.5pt">
   <tr><th style="width:9mm"></th><th style="width:30%">項目</th><th>用途</th></tr>
   <tr><td><span class="n">1</span></td><td>連線狀態</td><td>「已連線 3/3 台」表示全部連上（網路／Wi-Fi）。綠點＝全部正常，紅點＝有靶機沒連上（會自動重連）。</td></tr>
-  <tr><td><span class="n">2</span></td><td>搜尋靶機</td><td>在同網段重新尋找靶機，找到新的會自動加入。打開網頁時也會在背景自動搜尋一次。</td></tr>
+  <tr><td><span class="n">2</span></td><td>搜尋靶機</td><td>在同網段重新尋找靶機，找到新的會自動加入。打開網頁時也會在背景自動搜尋一次（約 3 秒）。旁邊勾選「自動進 IPSC 紙靶」時，按下去還會自動連藍牙、讓靶機進入 IPSC 紙靶（第 2 節）。</td></tr>
   <tr><td><span class="n">3</span></td><td>計分方式</td><td>練習／比賽、Minor／Major，詳見第 6 節。</td></tr>
   <tr><td><span class="n">4</span></td><td>⏱ 開始</td><td>清除所有靶機，隨機 3～6 秒後嗶聲開始計時，每台中兩發後念出時間，詳見第 9 節。</td></tr>
   <tr><td><span class="n">5</span></td><td>🎤 語音</td><td>打開後說「重來」，等於按「⏱ 開始」，詳見第 9 節。</td></tr>
@@ -137,7 +136,7 @@ table.tight td, table.tight th { padding-top: 1mm; padding-bottom: 1mm; line-hei
       <tr><td><span class="key">藍牙</span></td><td>連接這台的藍牙（第 10 節）。下方文字顯示藍牙狀態與「指令成功 ✓」。</td></tr>
       <tr><td><span class="key">◎ 清除</span></td><td>清除這一台的彈痕與紀錄（需藍牙）。</td></tr>
       <tr><td><span class="key">⌂</span></td><td>靶機回主選單（需藍牙）；網頁會把靶設成「靶心」。</td></tr>
-      <tr><td><span class="key">進靶畫面</span></td><td>從主選單進入練習畫面（需藍牙），開機後使用，見第 2 節。</td></tr>
+      <tr><td><span class="key">進靶畫面</span></td><td>只讓這一台進入 IPSC 紙靶：回主選單 → 確認 → ▶（需藍牙），見第 2 節。</td></tr>
       <tr><td><span class="key">✕</span></td><td>從清單移除這台。</td></tr>
     </table>
   </div>
@@ -285,10 +284,10 @@ table.tight td, table.tight th { padding-top: 1mm; padding-bottom: 1mm; line-hei
   <tr><td><span class="key">◀</span> <span class="key">▶</span>、靶清單</td><td>換上一張／下一張靶；點靶清單會自動連按到那一張</td></tr>
   <tr><td><span class="key">◎ 清除</span></td><td>練習畫面：清除彈痕（RESET）；主選單：確認選取</td></tr>
   <tr><td><span class="key">⌂</span></td><td>回主選單</td></tr>
-  <tr><td><span class="key">進靶畫面</span></td><td>回主選單 → 1.5 秒後確認，進入練習畫面（從靶心開始）</td></tr>
+  <tr><td><span class="key">進靶畫面</span></td><td>回主選單 → 1.5 秒後確認進入練習畫面 → 2 秒後 ▶，停在 IPSC 紙靶</td></tr>
   <tr><td>上方 <span class="key" style="background:var(--accent);color:#fff;border-color:var(--accent)">全部清除</span>、語音「重來」</td><td>對每台已連藍牙的靶機送出清除</td></tr>
 </table>
-<div class="tip"><b>每次重新整理網頁後</b>藍牙要再選一次裝置（瀏覽器的安全限制）。網頁看不到靶機的名稱，所以有多台時，請自己對照靶機編號選對。</div>
+<div class="tip"><b>選一次就會記住</b>每張靶卡會記住選過的裝置，重新整理或重開 Chrome 後會自動重連，不用再選（若每次都要選，見第 2 節的 <code>chrome://flags</code> 設定）。網頁看不到靶機的名稱，所以有多台時，請自己對照靶機編號選對；一次按「搜尋靶機」只能跳出一台的清單，其他台請按各自靶卡的「藍牙」選一次。</div>
 
 
 <h2>11. 多台靶機</h2>
@@ -313,8 +312,10 @@ table.tight td, table.tight th { padding-top: 1mm; padding-bottom: 1mm; line-hei
   <tr><td>靶卡變成「靶心」</td><td>靶機回過主選單，重新進入練習畫面時是靶心。用靶卡的 ▶ 切回要用的靶（有藍牙時靶機一起換）。</td></tr>
   <tr><td>藍牙按鈕沒反應</td><td>改用 Chrome 或 Edge；確認 macOS 已允許 Chrome 使用藍牙；仍不行時，在終端機執行 <code>python3 -m http.server</code>，改開 <code>http://localhost:8000/monitor/</code>。</td></tr>
   <tr><td>「全部清除」後有靶機沒清到</td><td>那台沒有連藍牙。按該靶卡的「藍牙」連上後再試。</td></tr>
-  <tr><td>開機後怎麼進 IPSC 紙靶？</td><td>照第 2 節：等網路綠點 → 連藍牙 → 按「進靶畫面」→ 按 ▶ 一次。靶機無法開機就直接進紙靶。</td></tr>
-  <tr><td>按「進靶畫面」後靶機進到別的畫面</td><td>主選單的反白不在練習畫面那一項。回主選單把反白移到練習畫面，再按一次「進靶畫面」。</td></tr>
+  <tr><td>開機後怎麼進 IPSC 紙靶？</td><td>照第 2 節：等網路綠點 → 按「搜尋靶機」（勾選「自動進 IPSC 紙靶」），約 5 秒後就在紙靶。靶機無法開機就直接進紙靶。</td></tr>
+  <tr><td>自動進紙靶後靶機進到別的畫面</td><td>主選單的反白不在第一項「練習」。回主選單把反白移到「練習」，再按一次「搜尋靶機」或「進靶畫面」。</td></tr>
+  <tr><td>每次按「搜尋靶機」都跳出藍牙清單</td><td>Chrome 沒有記住藍牙裝置。到 <code>chrome://flags</code> 把 <b>Web Bluetooth new permissions backend</b> 設成 Enabled，重開 Chrome 後再選一次。</td></tr>
+  <tr><td>靶卡下方顯示「收不到靶機的藍牙訊號」</td><td>靶機沒開機、離電腦超過約 10 公尺，或剛關掉 Chrome 藍牙還沒釋放。等幾秒再按一次「搜尋靶機」。</td></tr>
   <tr><td>說「重來」後聽到「靶機沒有連藍牙，無法清除」</td><td>有靶機沒連藍牙（例如重新整理過網頁）。按那台靶卡下方的「藍牙」選裝置連上，再說一次「重來」。</td></tr>
   <tr><td>打完兩發沒聽到秒數</td><td>看上方是否停在「⏱ x.xx 秒」：若還在跑，代表有一發沒算到（嗶聲前開槍，或被判成 Miss／人質／遮蔽，看射擊順序）。若已停止，檢查喇叭音量和分頁是否靜音，點一下上方的時間可以再念一次。</td></tr>
   <tr><td>一直跳出「要求使用麥克風」</td><td>網頁是直接用檔案打開的，Chrome 記不住權限。改用 <code>start.command</code> 打開（<code>http://localhost:8765</code>），選「造訪這個網站時允許」一次即可。</td></tr>
