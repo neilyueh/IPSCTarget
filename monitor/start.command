@@ -3,14 +3,15 @@
 # Chrome remembers microphone and Bluetooth permission for a localhost address,
 # but not for a page opened straight from a file, so this stops the
 # "use microphone?" prompt from coming back every time.
-# The little web server only listens on this computer (127.0.0.1).
+# The little web server (serve.py) is also reachable from an iPad on the same Wi-Fi;
+# the page header shows the address to use there.
 
 cd "$(dirname "$0")" || exit 1
 PORT=8765
 URL="http://localhost:$PORT/index.html"
 
 if ! lsof -nP -iTCP:$PORT -sTCP:LISTEN >/dev/null 2>&1; then
-  nohup python3 -m http.server "$PORT" --bind 127.0.0.1 >/dev/null 2>&1 &
+  nohup python3 serve.py "$PORT" >/dev/null 2>&1 &
   for _ in 1 2 3 4 5 6 7 8 9 10; do
     curl -s -o /dev/null "$URL" && break
     sleep 0.3

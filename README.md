@@ -92,10 +92,19 @@
 
 說明：
 
-- 它會建立 `~/Library/LaunchAgents/com.ipsctarget.monitor-web.plist`，用 macOS 的 launchd 在每次登入時執行 `python3 -m http.server 8765 --bind 127.0.0.1`，提供 `monitor` 資料夾。只有這台電腦自己連得到。
+- 它會建立 `~/Library/LaunchAgents/com.ipsctarget.monitor-web.plist`，用 macOS 的 launchd 在每次登入時執行 `python3 monitor/serve.py 8765`，提供 `monitor` 資料夾。同一個 Wi-Fi 的 iPad／手機也連得到（見下方「從 iPad 看」）。
 - 伺服器意外停掉時約 10 秒內會自動重開；錯誤訊息記在 `~/Library/Logs/ipsctarget-web.log`。
 - 搬動專案資料夾或更新 python 後，再雙擊一次 `install-autostart.command` 即可（可以重複執行）。
 - 裝好之後 `start.command` 照樣能用：它看到伺服器已經在跑，就直接打開 Chrome。
+
+### 從 iPad 看
+
+用 `start.command` 或自動啟動開的網頁，上方會顯示 **📱 iPad：http://192.168.x.x:8765/**（這台 Mac 目前的區網 IP，點一下可複製）。iPad 連同一個 Wi-Fi，在 Safari 輸入這個網址就能看到彈著和分數。
+
+- iPad 上的 Safari **不支援網頁藍牙**，所以「自動進 IPSC 紙靶」、透過藍牙「全部清除」要在 Mac 的 Chrome 上操作；語音「重來」在 iPad 上也不能用（http 網址拿不到麥克風）。
+- 靶機清單和設定是每個瀏覽器各自記的，iPad 第一次打開時會自動搜尋靶機，也可以手動加入靶機 IP。
+- Mac 的 IP 若變了（路由器重新分配），網頁上方顯示的網址會跟著更新；想固定的話，在路由器把這台 Mac 設成固定 IP。
+- 第一次若 macOS 問「是否允許 python3 接受連入連線」，請選「允許」。
 - 取消：雙擊 [`monitor/uninstall-autostart.command`](monitor/uninstall-autostart.command)。
 
 ## 運作原理

@@ -117,6 +117,7 @@ tr.latest td { background: color-mix(in srgb, var(--last) 12%, transparent); }
   <button id="find" title="在同網段搜尋所有靶機；勾選「自動進 IPSC 紙靶」時，同時連藍牙並讓每台靶機進入 IPSC 紙靶">搜尋靶機</button>
   <label class="status" title="按「搜尋靶機」時，自動連藍牙，讓靶機回主選單 → 進入練習畫面 → 切到 IPSC 紙靶"><input type="checkbox" id="autoIpsc" checked> 自動進 IPSC 紙靶</label>
   <span class="status" id="scanText"></span>
+  <span class="status" id="lanText" hidden title="iPad／手機連同一個 Wi-Fi，在 Safari 輸入這個網址（點一下複製）" style="cursor:pointer"></span>
   <span class="spacer"></span>
   <label class="status">計分
     <select id="mode"><option value="practice">練習（每發都算）</option><option value="match">比賽（每靶取最佳 2 發）</option></select>
@@ -1393,6 +1394,23 @@ document.addEventListener('keydown', e => {
 // Test hook: __inject(targetIndex, message)
 window.__inject = (i, m) => { const t = targets[i]; if (t) handleMessage(t, m); };
 window.__targets = targets;
+
+// Show this Mac's LAN address (from serve.py) so an iPad on the same Wi-Fi can open the page.
+async function showLanUrl() {
+  const el = document.getElementById('lanText');
+  if (location.protocol !== 'http:') return;
+  try {
+    const r = await fetch('/lan-ip.json', { cache: 'no-store' });
+    if (!r.ok) return;
+    const { ips, port } = await r.json();
+    if (!ips || !ips.length) { el.hidden = true; return; }
+    const url = `http://${ips[0]}:${port || location.port}/`;
+    el.textContent = `📱 iPad：${url}`;
+    el.hidden = false;
+    el.onclick = () => navigator.clipboard?.writeText(url).then(() => toast('已複製 ' + url), () => {});
+  } catch (e) { /* plain http.server or file: — nothing to show */ }
+}
+showLanUrl(); setInterval(showLanUrl, 60000);
 
 loadTargets();
 buildCards(); renderAll();

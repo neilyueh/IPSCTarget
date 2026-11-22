@@ -1,7 +1,7 @@
 #!/bin/bash
 # Double-click once to make this Mac start the IPSC 靶監看 web server at every login.
 # After that, open http://localhost:8765/index.html in Chrome any time.
-# The server only listens on this computer (127.0.0.1). Safe to run again,
+# The server (serve.py) is also reachable from an iPad on the same Wi-Fi. Safe to run again,
 # e.g. after moving the project folder.
 
 LABEL="com.ipsctarget.monitor-web"
@@ -18,6 +18,7 @@ fi
 # Stop an earlier copy of this server, and the one start.command may have started.
 launchctl bootout "gui/$(id -u)/$LABEL" 2>/dev/null
 pkill -f "http.server $PORT" 2>/dev/null
+pkill -f "serve.py $PORT" 2>/dev/null
 sleep 1
 
 mkdir -p "$HOME/Library/LaunchAgents"
@@ -30,11 +31,8 @@ cat > "$PLIST" <<PLISTEOF
   <key>ProgramArguments</key>
   <array>
     <string>$PY</string>
-    <string>-m</string>
-    <string>http.server</string>
+    <string>$DIR/serve.py</string>
     <string>$PORT</string>
-    <string>--bind</string>
-    <string>127.0.0.1</string>
   </array>
   <key>WorkingDirectory</key><string>$DIR</string>
   <key>RunAtLoad</key><true/>
