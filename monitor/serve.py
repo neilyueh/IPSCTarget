@@ -54,8 +54,11 @@ class Handler(SimpleHTTPRequestHandler):
             return
         super().do_GET()
 
-    def log_message(self, *args):
-        pass
+    def log_message(self, fmt, *args):
+        # Goes to ~/Library/Logs/ipsctarget-web.log under launchd: shows whether
+        # requests from the iPad reach this Mac at all.
+        if not self.path.startswith("/lan-ip.json"):
+            super().log_message(fmt, *args)
 
 
 if __name__ == "__main__":
