@@ -99,6 +99,9 @@ tr.latest td { background: color-mix(in srgb, var(--last) 12%, transparent); }
   color: var(--bg); padding: 12px 20px; border-radius: 10px; font-size: 18px; font-weight: 600;
   opacity: 0; pointer-events: none; transition: opacity .2s; z-index: 10; max-width: 90vw; }
 #toast.show { opacity: 1; }
+/* View-only browsers (iPad, or Chrome on a LAN address): no Bluetooth / microphone. */
+body.noble [data-act=ble], body.noble #autoIpscLabel, body.noble #clearAllBle { display: none; }
+body.nomic #voiceBtn, body.nomic #voiceText { display: none; }
 .empty { padding: 40px 16px; text-align: center; color: var(--muted); }
 @media (max-width: 1100px) { .grid.many { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 560px) { .grid.many, .grid { grid-template-columns: 1fr; } }
@@ -115,7 +118,7 @@ tr.latest td { background: color-mix(in srgb, var(--last) 12%, transparent); }
   <h1>IPSC 靶監看</h1>
   <span class="status"><span class="dot" id="dot"></span><span id="statusText">未連線</span></span>
   <button id="find" title="在同網段搜尋所有靶機；勾選「自動進 IPSC 紙靶」時，同時連藍牙並讓每台靶機進入 IPSC 紙靶">搜尋靶機</button>
-  <label class="status" title="按「搜尋靶機」時，自動連藍牙，讓靶機回主選單 → 進入練習畫面 → 切到 IPSC 紙靶"><input type="checkbox" id="autoIpsc" checked> 自動進 IPSC 紙靶</label>
+  <label class="status" id="autoIpscLabel" title="按「搜尋靶機」時，自動連藍牙，讓靶機回主選單 → 進入練習畫面 → 切到 IPSC 紙靶"><input type="checkbox" id="autoIpsc" checked> 自動進 IPSC 紙靶</label>
   <span class="status" id="scanText"></span>
   <span class="status" id="lanText" hidden title="iPad／手機連同一個 Wi-Fi，在 Safari 輸入這個網址（點一下複製）" style="cursor:pointer"></span>
   <span class="spacer"></span>
@@ -312,6 +315,13 @@ function beep(zone) {
 }
 
 // ---------- Targets ----------
+// Without Web Bluetooth (iPad, or a plain-http LAN address in Chrome) the page is
+// view-only: hide the Bluetooth controls instead of showing errors on every card.
+const NO_BLE_TEXT = /CriOS|EdgiOS|iPad|iPhone|Macintosh.*Mobile/.test(navigator.userAgent) || !/Chrome|Edg/.test(navigator.userAgent)
+  ? '只能看：藍牙控制請在 Mac 的 Chrome 操作'
+  : `只能看：藍牙請改用 http://localhost:${location.port || 8765}/`;
+if (!navigator.bluetooth) document.body.classList.add('noble');
+if (!window.isSecureContext) document.body.classList.add('nomic');
 // Each target: its own WebSocket (Wi-Fi) for hits, optional BLE link for control.
 const targets = [];
 let nextId = 1;
@@ -322,7 +332,7 @@ function makeTarget({ ip, name, zoom, kind, bleId }) {
     note: '', lastDir: {}, pending: [], moving: false,
     ws: null, on: false, gen: 0, retry: 2000, timer: null,
     shots: [], seen: new Set(), lastBtn: 0,
-    bleDevice: null, bleChar: null, bleText: '藍牙未連接', wide: false, el: null };
+    bleDevice: null, bleChar: null, bleText: navigator.bluetooth ? '藍牙未連接' : NO_BLE_TEXT, wide: false, el: null };
 }
 function saveTargets() {
   store('ipsc.targets', JSON.stringify(targets.map(t => ({ ip: t.ip, name: t.name, zoom: t.zoom, kind: t.kind, bleId: t.bleId }))));
@@ -1093,7 +1103,7 @@ async function enterTargetScreen(t) {
 // a user gesture (only one target per click may open the device picker), then send
 // every connected target to the IPSC paper target. The Wi-Fi scan runs alongside.
 async function autoIpsc() {
-  if (!targets.length) return;
+  if (!targets.length || !navigator.bluetooth) return;
   const hasGetDevices = await bleRestore();
   let picker = true;
   const results = await Promise.all(targets.map(async t => {
