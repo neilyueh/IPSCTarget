@@ -845,7 +845,7 @@ function renderAll() { for (const t of targets) renderTarget(t); renderSummary()
 
 // ---------- Discovery: find every target on the subnet ----------
 const COMMON_PREFIXES = ['192.168.86', '192.168.1', '192.168.0', '192.168.50', '192.168.31', '10.0.0', '10.0.1'];
-let scanGen = 0;
+let scanGen = 0, scanning = false;
 
 async function httpAlive(host, timeoutMs) {
   const ctl = new AbortController();
@@ -860,7 +860,7 @@ async function httpAlive(host, timeoutMs) {
 // few hosts that answered. Every host that accepts ws://<ip>/websocket is a target.
 async function discover(prefixes, stopAtFirstPrefixWithHits) {
   const my = ++scanGen;
-  $('find').disabled = true;
+  scanning = true;
   let added = 0, found = 0;
   for (const prefix of prefixes) {
     const hosts = Array.from({ length: 254 }, (_, i) => `${prefix}.${i + 1}`);
@@ -869,12 +869,12 @@ async function discover(prefixes, stopAtFirstPrefixWithHits) {
     const worker = async () => {
       while (next < hosts.length && my === scanGen) {
         const host = hosts[next++];
-        if (await httpAlive(host, 1500)) web.push(host);
+        if (await httpAlive(host, 800)) web.push(host);   // hosts on the LAN answer within ~0.2 s
         checked++;
         $('scanText').textContent = `搜尋 ${prefix}.x（${checked}/254）`;
       }
     };
-    await Promise.all(Array.from({ length: 32 }, worker));
+    await Promise.all(Array.from({ length: 64 }, worker));
     if (my !== scanGen) return;
     let hitsHere = 0;
     for (const host of web) {
@@ -889,7 +889,7 @@ async function discover(prefixes, stopAtFirstPrefixWithHits) {
     found += hitsHere;
     if (stopAtFirstPrefixWithHits && hitsHere) break;
   }
-  $('find').disabled = false;
+  scanning = false;
   $('scanText').textContent = `找到 ${found} 台` + (added ? `（新增 ${added} 台）` : '');
   if (added) toast(`找到並加入 ${added} 台新靶機`);
 }
@@ -1369,10 +1369,13 @@ $('simBtn').addEventListener('click', () => {
   toast(simMode ? '模擬射擊：在靶圖上點一下就算中一發（只在網頁上，不傳到靶機）' : '已關閉模擬射擊');
 });
 $('clearAllBle').addEventListener('click', clearEverything);
+// The button stays usable during the background scan: Bluetooth and the IPSC steps
+// do not need the Wi-Fi scan, so they start at once and a running scan carries on.
 $('find').addEventListener('click', () => {
+  if ($('autoIpsc').checked) autoIpsc();
+  if (scanning) return;
   const ps = knownPrefixes();
   discover(ps.length ? ps : COMMON_PREFIXES, !ps.length);
-  if ($('autoIpsc').checked) autoIpsc();
 });
 const savedAutoIpsc = load('ipsc.autoIpsc'); if (savedAutoIpsc) $('autoIpsc').checked = savedAutoIpsc === '1';
 $('autoIpsc').addEventListener('change', () => store('ipsc.autoIpsc', $('autoIpsc').checked ? '1' : '0'));
