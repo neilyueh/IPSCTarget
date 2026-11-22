@@ -950,7 +950,13 @@ async function bleGattConnect(dev) {
 // noPicker: never open the device picker (it needs a fresh click, so only one target
 // per click can use it); report instead that the device has to be chosen once.
 async function bleConnect(t, noPicker) {
-  if (!navigator.bluetooth) { bleSay(t, '此瀏覽器不支援藍牙（請用 Chrome/Edge）'); return false; }
+  if (!navigator.bluetooth) {
+    // Chrome hides Web Bluetooth on plain-http pages other than localhost (e.g. http://192.168.x.x).
+    bleSay(t, !window.isSecureContext && /Chrome|Edg/.test(navigator.userAgent) && !/CriOS|EdgiOS/.test(navigator.userAgent)
+      ? `藍牙只能在 http://localhost:${location.port || 8765}/ 使用（區網網址是給 iPad 看的）`
+      : '此瀏覽器不支援藍牙（請在 Mac 的 Chrome/Edge 用 localhost 網址操作）');
+    return false;
+  }
   try {
     if (!t.bleDevice) await bleRestore();
     if (t.bleDevice && !t.bleDevice.gatt.connected) {
@@ -1405,7 +1411,7 @@ async function showLanUrl() {
     const { ips, port } = await r.json();
     if (!ips || !ips.length) { el.hidden = true; return; }
     const url = `http://${ips[0]}:${port || location.port}/`;
-    el.textContent = `📱 iPad：${url}`;
+    el.textContent = `📱 iPad 用：${url}`;
     el.hidden = false;
     el.onclick = () => navigator.clipboard?.writeText(url).then(() => toast('已複製 ' + url), () => {});
   } catch (e) { /* plain http.server or file: — nothing to show */ }
