@@ -168,7 +168,7 @@ body.nomic #voiceBtn, body.nomic #voiceText { display: none; }
         <label><input type="checkbox" id="autoClear"> 停頓超過</label>
         <input type="number" id="idleSec" value="10" min="2" max="300"> 秒，下一發自動開新一輪
         <label><input type="checkbox" id="clearTogether"> 任一台 RESET 就全部清除</label>
-        <label><input type="checkbox" id="beep" checked> 命中提示音</label>
+        <label title="A 高音、C/D 中音、遮蔽低音；Miss 念「Miss」；打到人質念「人質被打死了幾次」"><input type="checkbox" id="beep" checked> 命中提示音</label>
       </div>
       <div class="opts" style="margin-top:8px">
         <label title="說出這些字也算「重來」；用逗號分開">語音「重來」也接受：<input id="voiceWords" style="width:170px" placeholder="例如：從頭,再來"></label>
@@ -326,6 +326,15 @@ function beep(zone) {
     g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.12);
     o.connect(g); g.connect(audioCtx.destination); o.start(); o.stop(audioCtx.currentTime + 0.13);
   } catch (e) {}
+}
+// Hit feedback: A / C / D / hard cover beep (hard cover keeps the low tone); a Miss is
+// spoken as "Miss"; a hostage hit is spoken with how many times this target's hostage
+// has been hit since it was last cleared.
+function hitSound(t, zone, ns) {
+  if (!$('beep').checked) return;
+  if (ns) speak(`人質被打死了${t.shots.filter(s => s.ns).length}次`, true);
+  else if (zone === 'M') speak('Miss', true);
+  else beep(zone);
 }
 
 // ---------- Targets ----------
@@ -524,7 +533,7 @@ function addShot(t, e) {
   if (last && drill.phase === 'idle' && $('autoClear').checked && (arr - last.arr) / 1000 > idle) clearAllRecords(false);
   const { zone, ns, paper } = classify(gx, gy, t.zoom, t.kind);
   t.shots.push({ dt, arr, x, y, gx, gy, zone, ns, paper, kind: t.kind, tid: t.id, sim: !!e.sim });
-  beep(ns ? 'NS' : zone);
+  hitSound(t, zone, ns);
   drillCheck(arr);
   renderTarget(t); renderSummary();
 }
@@ -1185,19 +1194,20 @@ if (window.speechSynthesis) {
   speechVoice = pickVoice();
   speechSynthesis.addEventListener('voiceschanged', () => { speechVoice = pickVoice(); });
 }
-function speak(text) {
-  if (!window.speechSynthesis) { toast('這個瀏覽器不能語音播報'); return; }
+// quiet: a per-shot callout — no warning toasts (the next shot often cuts it off).
+function speak(text, quiet = false) {
+  if (!window.speechSynthesis) { if (!quiet) toast('這個瀏覽器不能語音播報'); return; }
   const go = () => {
     const u = new SpeechSynthesisUtterance(text);
-    u.lang = 'zh-TW'; u.rate = 1; u.volume = 1;
+    u.lang = 'zh-TW'; u.rate = quiet ? 1.3 : 1; u.volume = 1;
     if (speechVoice) u.voice = speechVoice;
     let started = false;
     u.onstart = () => { started = true; };
-    u.onerror = ev => toast(`語音播報失敗（${ev.error}）：${text}`);
+    u.onerror = ev => { if (!quiet && ev.error !== 'interrupted' && ev.error !== 'canceled') toast(`語音播報失敗（${ev.error}）：${text}`); };
     lastUtterance = u;
     speechSynthesis.resume();
     speechSynthesis.speak(u);
-    setTimeout(() => { if (!started && lastUtterance === u) toast(`沒有播出聲音，請檢查喇叭音量或點一下上方的時間重播：${text}`); }, 2500);
+    if (!quiet) setTimeout(() => { if (!started && lastUtterance === u) toast(`沒有播出聲音，請檢查喇叭音量或點一下上方的時間重播：${text}`); }, 2500);
   };
   if (speechSynthesis.speaking || speechSynthesis.pending) { speechSynthesis.cancel(); setTimeout(go, 150); } else go();
 }
