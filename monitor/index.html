@@ -168,7 +168,7 @@ body.nomic #voiceBtn, body.nomic #voiceText { display: none; }
         <label><input type="checkbox" id="autoClear"> 停頓超過</label>
         <input type="number" id="idleSec" value="10" min="2" max="300"> 秒，下一發自動開新一輪
         <label><input type="checkbox" id="clearTogether"> 任一台 RESET 就全部清除</label>
-        <label title="A 高音、C/D 中音；Miss 和遮蔽念「Miss」；打到人質念「人質被打死了幾次」"><input type="checkbox" id="beep" checked> 命中提示音</label>
+        <label title="A 高音、C 中音；D 念「打到D了」；Miss 和遮蔽念「Miss」；打到人質念「人質被打死了幾次」"><input type="checkbox" id="beep" checked> 命中提示音</label>
       </div>
       <div class="opts" style="margin-top:8px">
         <label title="說出這些字也算「重來」；用逗號分開">語音「重來」也接受：<input id="voiceWords" style="width:170px" placeholder="例如：從頭,再來"></label>
@@ -327,13 +327,14 @@ function beep(zone) {
     o.connect(g); g.connect(audioCtx.destination); o.start(); o.stop(audioCtx.currentTime + 0.13);
   } catch (e) {}
 }
-// Hit feedback: A / C / D beep; a Miss or a hard-cover hit is
-// spoken as "Miss"; a hostage hit is spoken with how many times this target's hostage
+// Hit feedback: A / C beep; a D hit is spoken as "打到D了"; a Miss or a hard-cover
+// hit is spoken as "Miss"; a hostage hit is spoken with how many times this target's hostage
 // has been hit since it was last cleared.
 function hitSound(t, zone, ns) {
   if (!$('beep').checked) return;
   if (ns) speak(`人質被打死了${t.shots.filter(s => s.ns).length}次`, true);
   else if (zone === 'M' || zone === 'HC') speak('Miss', true);
+  else if (zone === 'D') speak('打到D了', true);
   else beep(zone);
 }
 
