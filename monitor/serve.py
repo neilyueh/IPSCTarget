@@ -78,6 +78,13 @@ def reap():
 
 
 class Handler(SimpleHTTPRequestHandler):
+    def end_headers(self):
+        # Make browsers check for a newer page on every load (a plain reload is
+        # enough after an update); unchanged files still come back as 304.
+        if not self.path.startswith("/relay/") and not self.path.startswith("/lan-ip.json"):
+            self.send_header("Cache-Control", "no-cache")
+        super().end_headers()
+
     def send_json(self, obj, status=200):
         body = json.dumps(obj, ensure_ascii=False).encode()
         self.send_response(status)
