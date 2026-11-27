@@ -1597,7 +1597,9 @@ async function showLanUrl() {
     const r = await fetch('/lan-ip.json', { cache: 'no-store' });
     if (!r.ok) return;
     const { ips, port } = await r.json();
-    if (!ips || !ips.length) { el.hidden = true; return; }
+    if (!ips || !ips.length) {   // off the network: don't leave an old address up
+      el.hidden = true; $('qrCard').hidden = true; qrShown = ''; return;
+    }
     const url = `http://${ips[0]}:${port || location.port}/`;
     el.textContent = `📱 iPad 用：${url}`;
     el.hidden = false;
