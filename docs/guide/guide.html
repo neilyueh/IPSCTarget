@@ -308,11 +308,12 @@ table.tight td, table.tight th { padding-top: 1mm; padding-bottom: 1mm; line-hei
 <ol class="steps">
   <li>在 Mac 的 Chrome 打開 <code>http://localhost:8765/</code>，上方「搜尋靶機」旁會顯示 <span class="key">📱 iPad 用：http://192.168.x.x:8765/</span>，這是 Mac 目前的區網 IP（點一下可複製）；右側說明下方也有這個網址的 QR code。</li>
   <li>用 iPad 的相機掃 QR code，點跳出來的連結；或在 iPad 的 Safari／Chrome 輸入這個網址，<b>開頭的 <code>http://</code> 要打</b>。建議加入書籤或「加入主畫面」。</li>
-  <li>iPad 第一次打開時會自動搜尋靶機，也可以在右下「手動加入 IP」輸入靶機 IP。靶機清單和名稱是每個瀏覽器各自記的，iPad 要自己設定一次。</li>
+  <li>Mac 的 Chrome 開著 <code>localhost:8765</code> 時，iPad 一打開就會顯示「已和 Mac 同步」：靶機清單、名稱、縮放、目前的靶和已經打的彈著都和 Mac 一樣，不用在 iPad 上另外設定。之後兩邊任一邊換靶、校正、清除、改名字或縮放，另一邊都會跟著變。Mac 的網頁沒開時，iPad 改用自己記的清單（會自動搜尋靶機，也可以在右下「手動加入 IP」輸入）。</li>
 </ol>
 <table class="tight">
   <tr><th style="width:36%">功能</th><th>Mac（<code>localhost:8765</code>）</th><th>iPad（<code>192.168.x.x:8765</code>）</th></tr>
   <tr><td>即時彈著、成績、Hit Factor、射擊順序</td><td>✓</td><td>✓</td></tr>
+  <tr><td>靶機清單、名稱、縮放、目前的靶、彈著</td><td>✓</td><td>✓ 自動和 Mac 同步（Mac 的 Chrome 要開著這個網頁）</td></tr>
   <tr><td>◀ ▶ 換靶、◎ 清除、⌂、進靶畫面、全部清除</td><td>✓（藍牙）</td><td>✓ 轉給 Mac 用藍牙送出（Mac 的 Chrome 要開著這個網頁，該靶要在 Mac 上連好藍牙）</td></tr>
   <tr><td>連藍牙、自動進 IPSC 紙靶</td><td>✓</td><td>✕（按鈕會自動藏起來）</td></tr>
   <tr><td>語音「重來」</td><td>✓</td><td>✕（http 區網網址拿不到麥克風）</td></tr>

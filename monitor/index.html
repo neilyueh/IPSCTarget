@@ -192,7 +192,7 @@ body.noble .qrcard { display: none; }
         <b>清除</b>：「全部清除」透過藍牙清每台已連接的靶機並清空電腦紀錄；靶卡下方的 ◎ 只清那一台。對靶上的 RESET 開一槍或用手機 App 按 RESET，對應那台的紀錄也會自動清空。<br>
         <b>計分</b>：Miss 扣 10 分；打在黑色遮蔽區 0 分（表格算在 Miss 欄）；打到人質每發扣 10 分（穿過人質又打到靶，兩者都算）。比賽模式每張靶取最佳 2 發，不足 2 發算 Miss。時間是第一發到最後一發（不含起始嗶聲）。<br>
         <b>換靶</b>：靶卡上方的 ◀ ▶ 依靶機順序切換全部 17 種靶，畫面和靶機一樣；有連藍牙時靶機一起換。在靶機或手機 App 換靶，網頁也會跟著換；對不上時按「校正」。計分只支援 IPSC 紙靶、Hard cover 1、2、人質靶、IPSC 雙靶，其他靶只顯示命中位置。<br>
-        <b>iPad</b>：掃下方 QR code 打開。iPad 上按的換靶、清除會轉給這台 Mac 用藍牙送出，所以 Mac 的這個網頁要開著。<br>
+        <b>iPad</b>：掃下方 QR code 打開。iPad 的靶機清單、目前的靶和彈著會和這台 Mac 同步；iPad 上按的換靶、清除會轉給這台 Mac 用藍牙送出，所以 Mac 的這個網頁要開著。<br>
         每台的「縮放」要和該靶機畫面的 Zoom 一致，A/C/D 判定才會準。
       </p>
     </div>
@@ -382,6 +382,7 @@ function makeTarget({ ip, name, zoom, kind, bleId }) {
 }
 function saveTargets() {
   store('ipsc.targets', JSON.stringify(targets.map(t => ({ ip: t.ip, name: t.name, zoom: t.zoom, kind: t.kind, bleId: t.bleId }))));
+  publishState();
 }
 function loadTargets() {
   let list = null;
@@ -425,6 +426,7 @@ function addTarget(ip, name) {
   if (!ip || targets.some(t => t.ip === ip)) return null;
   const t = makeTarget({ ip, name });
   targets.push(t); saveTargets(); buildCards(); connectTarget(t);
+  pushEdit(t, 'add', t.name);
   return t;
 }
 function removeTarget(t) {
@@ -432,6 +434,7 @@ function removeTarget(t) {
   t.gen++; clearTimeout(t.timer); dropWs(t);
   try { if (t.bleDevice && t.bleDevice.gatt.connected) t.bleDevice.gatt.disconnect(); } catch (e) {}
   targets.splice(i, 1); saveTargets(); buildCards(); renderAll();
+  pushEdit(t, 'remove');
 }
 
 // ---------- WebSocket per target ----------
@@ -534,7 +537,7 @@ function simulateShot(t, ev) {
 function addShot(t, e) {
   const x = Number(e.x), y = Number(e.y), dt = Number(e.t);
   if (!isFinite(x) || !isFinite(y)) return;
-  const key = `${dt}|${x}|${y}`;
+  const key = shotKey({ dt, x, y });
   if (t.seen.has(key)) return;
   t.seen.add(key);
   const [gx, gy] = toScreen(x, y);
@@ -560,6 +563,7 @@ function addShot(t, e) {
   drillCheck(arr);
   renderTarget(t); renderSummary();
 }
+function shotKey(s) { return `${s.dt == null ? NaN : s.dt}|${s.x}|${s.y}`; }
 function lastShotOverall() {
   let best = null;
   for (const t of targets) { const s = t.shots[t.shots.length - 1]; if (s && (!best || s.arr > best.arr)) best = s; }
@@ -774,18 +778,12 @@ function buildCards() {
     t.el = el;
     drawTargetSvg(el.querySelector('svg'), t.zoom, t.kind);
     const zoomSel = el.querySelector('.zoom'); zoomSel.value = String(t.zoom);
-    zoomSel.addEventListener('change', () => {
-      t.zoom = Number(zoomSel.value); saveTargets();
-      t.shots.forEach(s => Object.assign(s, classify(s.gx, s.gy, t.zoom, t.kind)));
-      drawTargetSvg(el.querySelector('svg'), t.zoom, t.kind); renderTarget(t); renderSummary();
-    });
-    el.querySelector('.name').addEventListener('change', e => {
-      t.name = e.target.value.trim() || t.name; e.target.value = t.name; saveTargets(); renderSummary();
-    });
+    zoomSel.addEventListener('change', () => { editTarget(t, { zoom: Number(zoomSel.value) }); pushEdit(t, 'set', { zoom: t.zoom }); });
+    el.querySelector('.name').addEventListener('change', e => { editTarget(t, { name: e.target.value }); pushEdit(t, 'set', { name: t.name }); });
     const cal = el.querySelector('.cal');
     el.querySelector('[data-act=cal]').addEventListener('click', () => { cal.hidden = !cal.hidden; cal.value = ''; });
     cal.addEventListener('change', () => {
-      setKind(t, Number(cal.value)); cal.hidden = true;
+      setKind(t, Number(cal.value)); cal.hidden = true; pushEdit(t, 'set', { kind: t.kind });
       toast(`${t.name}：已校正為「${SEQ_LABEL[TARGET_SEQ[t.kind]]}」`);
     });
     el.querySelector('.note').addEventListener('click', () => { t.note = ''; updateKindUi(t); });
@@ -794,7 +792,9 @@ function buildCards() {
       // View-only (iPad): the Mac sends it over Bluetooth; failing that, ◎ only
       // clears this page's record of that target.
       remote(t, 'dir', b.dataset.dir, b.dataset.dir === 'enter' && (() => {
-        clearTarget(t); renderSummary(); return '只清了這台 iPad 上的紀錄';
+        clearTarget(t); renderSummary();
+        if (macSynced) { pushEdit(t, 'clear'); return '只清了網頁上的紀錄'; }
+        return '只清了這台 iPad 上的紀錄';
       }));
     }));
     el.querySelectorAll('[data-act=prev]').forEach(b => b.addEventListener('click', () => stepKind(t, 'left')));
@@ -905,6 +905,7 @@ function renderSummary() {
     t.el.querySelectorAll('.holes circle').forEach((c, i) => c.setAttribute('fill', t.shots[i] === lastOverall ? 'var(--last)' : 'var(--hole)'));
     t.el.querySelectorAll('.holes text').forEach((c, i) => c.setAttribute('fill', t.shots[i] === lastOverall ? 'var(--last)' : '#1d1d1f'));
   }
+  publishState();
 }
 function renderAll() { for (const t of targets) renderTarget(t); renderSummary(); updateHeaderStatus(); }
 
@@ -1102,7 +1103,7 @@ async function sendDirective(t, dir, quiet) {
 // without Bluetooth only the page changes.
 async function stepKind(t, dir) {
   if (!navigator.bluetooth && relayOn) {
-    remote(t, 'dir', dir, () => { setKind(t, t.kind + (dir === 'right' ? 1 : -1));
+    remote(t, 'dir', dir, () => { setKind(t, t.kind + (dir === 'right' ? 1 : -1)); pushEdit(t, 'set', { kind: t.kind });
       return `網頁換成「${SEQ_LABEL[TARGET_SEQ[t.kind]]}」，靶機請自己切換`; });
     return;
   }
@@ -1117,7 +1118,7 @@ async function stepKind(t, dir) {
 async function goToKind(t, want) {
   if (want === t.kind) return;
   if (!navigator.bluetooth && relayOn) {
-    remote(t, 'goto', want, () => { setKind(t, want);
+    remote(t, 'goto', want, () => { setKind(t, want); pushEdit(t, 'set', { kind: t.kind });
       return `網頁換成「${SEQ_LABEL[TARGET_SEQ[want]]}」，靶機請自己切換`; });
     return;
   }
@@ -1189,7 +1190,11 @@ async function autoIpsc() {
 async function clearEverything() {
   if (!navigator.bluetooth) {
     // iPad: the Mac clears the targets; this page clears its own record either way.
-    const r = await remote(null, 'clearAll', null, () => { clearAllRecords(); return '只清了這台 iPad 上的紀錄'; });
+    const r = await remote(null, 'clearAll', null, () => {
+      clearAllRecords();
+      if (macSynced) { pushEdit(null, 'clearRecords'); return '只清了網頁上的紀錄'; }
+      return '只清了這台 iPad 上的紀錄';
+    });
     if (r && r.ok) clearAllRecords();
     return;
   }
@@ -1265,7 +1270,27 @@ async function runRemote(c) {
   const t = targets.find(x => x.ip === c.ip);
   try {
     if (c.act === 'clearAll') return await clearEverything();
+    if (c.act === 'clearRecords') { clearAllRecords(); return { ok: true, msg: '已清除紀錄' }; }
+    if (c.act === 'opts' && c.arg && typeof c.arg === 'object') {
+      for (const k of ['mode', 'power']) {
+        const v = c.arg[k];
+        if (typeof v === 'string' && [...$(k).options].some(o => o.value === v)) { $(k).value = v; store('ipsc.' + k, v); }
+      }
+      renderAll();
+      return { ok: true, msg: '已同步' };
+    }
+    // Edits made on the iPad (they need no Bluetooth); the new state goes back to it.
+    if (c.act === 'add') {
+      if (!t) addTarget(c.ip, typeof c.arg === 'string' ? c.arg : '');
+      return { ok: true, msg: '已加入' };
+    }
     if (!t) return { ok: false, msg: `Mac 上沒有 ${c.ip} 這台靶` };
+    if (c.act === 'remove') { removeTarget(t); return { ok: true, msg: '已移除' }; }
+    if (c.act === 'clear') { clearTarget(t); renderSummary(); return { ok: true, msg: '已清除紀錄' }; }
+    if (c.act === 'set' && c.arg && typeof c.arg === 'object') {
+      editTarget(t, c.arg);
+      return { ok: true, kind: t.kind, msg: '已同步' };
+    }
     if (!t.bleChar && !(await bleConnect(t, true))) return { ok: false, msg: 'Mac 沒連上這台的藍牙' };
     if (t.moving) return { ok: false, msg: '正在切換中' };
     if (c.act === 'dir' && ['enter', 'homepage', 'left', 'right'].includes(c.arg)) {
@@ -1296,7 +1321,7 @@ async function relayController() {
       cmds = (await r.json()).cmds || [];
     } catch (e) { await sleep(3000); continue; }
     for (const c of cmds) {
-      if (c.act !== 'clearAll' && c.act !== 'goto') {
+      if (!['clearAll', 'goto', 'set', 'add', 'remove', 'clear', 'clearRecords', 'opts'].includes(c.act)) {
         const t = targets.find(x => x.ip === c.ip);
         if (t) toast(`iPad：${t.name}`);
       }
@@ -1306,11 +1331,135 @@ async function relayController() {
   }
 }
 
+// ---------- Keep the iPad's targets the same as the Mac's (see serve.py) ----------
+// The Mac page (Chrome on localhost) posts its targets to /relay/state on every change:
+// the list, names, zoom, which target is showing and every hit. An iPad that reaches
+// the Mac adopts that, and sends its own edits (name, zoom, 校正, adding or removing a
+// target, clearing records, mode) to the Mac, so both pages always show the same.
+var statePub = !!navigator.bluetooth && location.protocol === 'http:';
+var stateTimer = null, macSynced = false;
+
+function publishState() {
+  if (!statePub || stateTimer) return;
+  stateTimer = setTimeout(async () => {
+    stateTimer = null;
+    const now = performance.now();
+    const st = {
+      mode: $('mode').value, power: $('power').value,
+      targets: targets.map(t => ({ ip: t.ip, name: t.name, zoom: t.zoom, kind: t.kind,
+        shots: t.shots.map(s => ({ dt: isFinite(s.dt) ? s.dt : null, x: s.x, y: s.y, gx: s.gx, gy: s.gy,
+          zone: s.zone, ns: s.ns, paper: s.paper, kind: s.kind, sim: s.sim, age: Math.round(now - s.arr) })) })),
+    };
+    try {
+      const r = await fetch('/relay/state', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(st) });
+      if (r.status === 404 || r.status === 501) statePub = false;   // plain http.server: no relay
+    } catch (e) {}
+  }, 150);
+}
+
+// Name / zoom / target changes from a card, or from the iPad on the Mac.
+function editTarget(t, f) {
+  if (typeof f.name === 'string' && f.name.trim()) t.name = f.name.trim();
+  const z = Number(f.zoom);
+  if ([1, 0.7, 0.5].includes(z) && z !== t.zoom) {
+    t.zoom = z;
+    t.shots.forEach(s => Object.assign(s, classify(s.gx, s.gy, t.zoom, t.kind)));
+    if (t.el) drawTargetSvg(t.el.querySelector('svg'), t.zoom, t.kind);
+  }
+  if (t.el) { t.el.querySelector('.name').value = t.name; t.el.querySelector('.zoom').value = String(t.zoom); }
+  if (Number.isInteger(f.kind) && f.kind >= 0 && f.kind < TARGET_SEQ.length && f.kind !== t.kind) setKind(t, f.kind);
+  saveTargets(); renderTarget(t); renderSummary();
+}
+
+// iPad in sync: hand an edit to the Mac page as well (no answer needed).
+function pushEdit(t, act, arg) {
+  if (!macSynced) return;
+  fetch('/relay/cmd', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ ip: t ? t.ip : '', act, arg: arg === undefined ? null : arg }) }).catch(() => {});
+}
+
+function applyMacState(st) {
+  if (!st || !Array.isArray(st.targets)) return;
+  for (const k of ['mode', 'power'])
+    if (typeof st[k] === 'string' && [...$(k).options].some(o => o.value === st[k])) $(k).value = st[k];
+  const now = performance.now();
+  const list = [];
+  for (const m of st.targets) {
+    if (!m || typeof m.ip !== 'string' || !m.ip || list.some(x => x.ip === m.ip)) continue;
+    let t = targets.find(x => x.ip === m.ip);
+    if (!t) t = makeTarget(m);
+    else {
+      if (typeof m.name === 'string' && m.name && m.name !== t.name) t.name = m.name;
+      const z = [1, 0.7, 0.5].includes(Number(m.zoom)) ? Number(m.zoom) : t.zoom;
+      const k = Number.isInteger(m.kind) && m.kind >= 0 && m.kind < TARGET_SEQ.length ? m.kind : t.kind;
+      if (z !== t.zoom || k !== t.kind) {
+        t.zoom = z; t.kind = k; t.note = '';
+        if (t.el) drawTargetSvg(t.el.querySelector('svg'), t.zoom, t.kind);
+      }
+      if (t.el) { t.el.querySelector('.name').value = t.name; t.el.querySelector('.zoom').value = String(t.zoom); }
+    }
+    // The Mac already knows which target is showing: no "請確認" note here.
+    if (!t.confirmed || t.note.startsWith('請確認')) { t.confirmed = true; t.note = ''; }
+    // Hits: the Mac's list. Shots this page already has keep their own arrival time;
+    // ones that reached this page in the last 2 s but not the Mac yet are kept too.
+    const have = new Map(t.shots.map(s => [shotKey(s), s]));
+    const mac = (Array.isArray(m.shots) ? m.shots : []).filter(s => s && isFinite(s.gx) && isFinite(s.gy)).map(s => {
+      const own = have.get(shotKey(s));
+      if (own) return own;
+      return { dt: s.dt == null ? NaN : Number(s.dt), x: Number(s.x), y: Number(s.y), gx: s.gx, gy: s.gy,
+        zone: String(s.zone), ns: !!s.ns, paper: Number(s.paper) || 0, kind: Number(s.kind) || 0, tid: t.id,
+        sim: !!s.sim, arr: now - (Number(s.age) || 0), viaMac: true, fresh: !t.seen.has(shotKey(s)) };
+    });
+    const macKeys = new Set(mac.map(shotKey));
+    const mine = t.shots.filter(s => !s.viaMac && !macKeys.has(shotKey(s)) && now - s.arr < 2000);
+    t.shots = mac.concat(mine).sort((a, b) => a.arr - b.arr);
+    for (const s of mac) {
+      t.seen.add(shotKey(s));
+      if (s.fresh) { delete s.fresh; if (now - s.arr < 2000) hitSound(t, s.zone, s.ns); }
+    }
+    list.push(t);
+  }
+  const added = list.filter(t => !targets.includes(t));
+  for (const t of targets) if (!list.includes(t)) {          // removed on the Mac
+    t.gen++; clearTimeout(t.timer); dropWs(t);
+  }
+  const rebuild = added.length || list.length !== targets.length || list.some((t, i) => targets[i] !== t);
+  targets.splice(0, targets.length, ...list);
+  saveTargets();
+  if (rebuild) buildCards(); else targets.forEach(updateKindUi);
+  added.forEach(connectTarget);
+  renderAll();
+}
+
+// Mac page closing (or reloading): tell the iPads at once instead of after a timeout.
+if (statePub) addEventListener('pagehide', () => { try { navigator.sendBeacon('/relay/bye', ''); } catch (e) {} });
+
+async function stateFollower() {
+  if (navigator.bluetooth || location.protocol !== 'http:') return;
+  let v = -1;
+  for (;;) {
+    let res;
+    try {
+      const r = await fetch('/relay/state?v=' + v, { cache: 'no-store' });
+      if (r.status === 404) return;            // plain http.server: no relay
+      res = await r.json();
+    } catch (e) { await sleep(3000); continue; }
+    v = res.v;
+    const on = !!(res.controller && res.state);
+    if (on) applyMacState(res.state);
+    if (on !== macSynced) {
+      macSynced = on;
+      document.body.classList.toggle('synced', on);
+      toast(on ? '已和 Mac 同步：靶機、換靶和彈著都跟 Mac 一樣' : 'Mac 上的網頁關了，iPad 先自己顯示');
+    }
+  }
+}
+
 // ---------- Wire up ----------
 const savedMode = load('ipsc.mode'); if (savedMode) $('mode').value = savedMode;
 const savedPower = load('ipsc.power'); if (savedPower) $('power').value = savedPower;
-$('mode').addEventListener('change', () => { store('ipsc.mode', $('mode').value); renderAll(); });
-$('power').addEventListener('change', () => { store('ipsc.power', $('power').value); renderAll(); });
+$('mode').addEventListener('change', () => { store('ipsc.mode', $('mode').value); renderAll(); pushEdit(null, 'opts', { mode: $('mode').value }); });
+$('power').addEventListener('change', () => { store('ipsc.power', $('power').value); renderAll(); pushEdit(null, 'opts', { power: $('power').value }); });
 $('clear').addEventListener('click', () => clearAllRecords());
 // ---------- Start beep and timer ----------
 // 重來 / ⏱ 開始: clear every target, wait a random 3–6 s, beep, then time until
@@ -1582,7 +1731,7 @@ $('addBtn').addEventListener('click', () => {
 $('addIp').addEventListener('keydown', e => { if (e.key === 'Enter') $('addBtn').click(); });
 document.addEventListener('keydown', e => {
   if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
-  if (e.key === 'c' || e.key === 'C' || e.key === ' ') { e.preventDefault(); clearAllRecords(); }
+  if (e.key === 'c' || e.key === 'C' || e.key === ' ') { e.preventDefault(); clearAllRecords(); pushEdit(null, 'clearRecords'); }
 });
 
 // Test hook: __inject(targetIndex, message)
@@ -1619,7 +1768,7 @@ function showQr(url) {
   qrShown = url;
 }
 showLanUrl(); setInterval(showLanUrl, 60000);
-relayCheck(); relayController();
+relayCheck(); relayController(); stateFollower();
 
 loadTargets();
 buildCards(); renderAll();
@@ -1628,6 +1777,7 @@ targets.forEach(connectTarget);
 bleRestore().then(ok => { if (ok) targets.filter(t => t.bleDevice && !t.bleChar).forEach(t => bleConnect(t, true)); });
 // Look for more targets on the same subnet(s) in the background.
 setTimeout(() => {
+  if (macSynced) return;           // iPad: the Mac's target list is used instead
   const ps = knownPrefixes();
   discover(ps.length ? ps : COMMON_PREFIXES, !ps.length);
 }, 1500);

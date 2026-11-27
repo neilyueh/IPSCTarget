@@ -11,6 +11,10 @@ It also relays commands: the iPad cannot use Bluetooth, so its buttons POST to
 from /relay/poll, sends them to the target over Bluetooth and POSTs the outcome
 to /relay/result, which the iPad reads back from /relay/result?id=N.
 
+And it keeps the iPad's targets the same as the Mac's: the Mac page POSTs its
+targets (list, names, zoom, which target is showing, hits) to /relay/state on
+every change, and the iPad long-polls /relay/state?v=N for a newer version.
+
 Usage: python3 serve.py [port]
 """
 import json
@@ -28,7 +32,11 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 
 # Command relay state (see module docstring).
 relay_lock = threading.Condition()
-relay = {"next_id": 1, "queue": [], "inflight": [], "results": {}, "controller_seen": 0.0, "waiting": 0}
+relay = {"next_id": 1, "queue": [], "inflight": [], "results": {}, "controller_seen": 0.0, "waiting": 0,
+         # The Mac page's targets (list, names, zoom, which target is showing, hits),
+         # POSTed to /relay/state on every change; iPads long-poll it to stay in sync.
+         "state": None, "state_v": 0,
+         "gen": 0}   # bumped when the Mac page says it is closing (/relay/bye)
 CONTROLLER_TIMEOUT = 4.0   # seconds without a poll before the Mac page counts as closed
 POLL_WAIT = 20.0           # a poll is held open this long when there is nothing to do
 ACK_TIMEOUT = 2.5          # the page polls again right after taking commands; if it
@@ -108,6 +116,18 @@ class Handler(SimpleHTTPRequestHandler):
                 reap()
                 self.send_json({"controller": controller_alive()})
             return
+        if route == "/relay/state":
+            # iPad: wait until the Mac's state is newer than version v (long poll).
+            try:
+                v = int(self.query().get("v", "0"))
+            except ValueError:
+                v = 0
+            with relay_lock:
+                relay_lock.wait_for(lambda: relay["state_v"] != v, timeout=POLL_WAIT)
+                reap()
+                self.send_json({"v": relay["state_v"], "state": relay["state"],
+                                "controller": controller_alive()})
+            return
         if route == "/relay/poll":
             # The Mac page asks for new commands; each command goes to one page only.
             # Long poll: held open until a command arrives, so it needs no timers on
@@ -115,11 +135,16 @@ class Handler(SimpleHTTPRequestHandler):
             with relay_lock:
                 relay["inflight"] = []      # polling again acknowledges the last batch
                 relay["waiting"] += 1
+                gen = relay["gen"]
                 try:
-                    relay_lock.wait_for(lambda: relay["queue"], timeout=POLL_WAIT)
+                    relay_lock.wait_for(lambda: relay["queue"] or relay["gen"] != gen, timeout=POLL_WAIT)
                 finally:
-                    relay["waiting"] = max(0, relay["waiting"] - 1)
-                    relay["controller_seen"] = time.time()
+                    if relay["gen"] == gen:     # else the page already said it closed
+                        relay["waiting"] = max(0, relay["waiting"] - 1)
+                        relay["controller_seen"] = time.time()
+                if relay["gen"] != gen:
+                    self.send_json({"cmds": []})
+                    return
                 cmds, relay["queue"] = relay["queue"], []
                 now = time.time()
                 relay["inflight"] = [(c, now) for c in cmds]
@@ -141,7 +166,8 @@ class Handler(SimpleHTTPRequestHandler):
         route = self.path.split("?")[0]
         try:
             n = int(self.headers.get("Content-Length") or 0)
-            data = json.loads(self.rfile.read(n) or b"{}") if n <= 65536 else {}
+            limit = 4 << 20 if route == "/relay/state" else 65536   # state carries every hit
+            data = json.loads(self.rfile.read(n) or b"{}") if n <= limit else {}
         except (ValueError, json.JSONDecodeError):
             data = {}
         if route == "/relay/cmd":
@@ -159,6 +185,25 @@ class Handler(SimpleHTTPRequestHandler):
                     del relay["results"][old]
                 relay_lock.notify_all()
             self.send_json({"id": cid})
+            return
+        if route == "/relay/bye":
+            # The Mac page is closing: count it as gone now, so iPads hear at once.
+            with relay_lock:
+                relay["gen"] += 1
+                relay["waiting"] = 0
+                relay["controller_seen"] = 0.0
+                relay["state_v"] += 1
+                reap()
+                relay_lock.notify_all()
+            self.send_json({"ok": True})
+            return
+        if route == "/relay/state":
+            with relay_lock:
+                relay["state"] = data if isinstance(data, dict) and data.get("targets") is not None else None
+                relay["state_v"] += 1
+                relay["controller_seen"] = max(relay["controller_seen"], time.time())
+                relay_lock.notify_all()
+            self.send_json({"ok": True})
             return
         if route == "/relay/result":
             try:
