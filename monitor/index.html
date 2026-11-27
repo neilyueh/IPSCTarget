@@ -100,7 +100,7 @@ tr.latest td { background: color-mix(in srgb, var(--last) 12%, transparent); }
   opacity: 0; pointer-events: none; transition: opacity .2s; z-index: 10; max-width: 90vw; }
 #toast.show { opacity: 1; }
 /* View-only browsers (iPad, or Chrome on a LAN address): no Bluetooth / microphone. */
-body.noble [data-act=ble], body.noble #autoIpscLabel, body.noble #clearAllBle { display: none; }
+body.noble [data-act=ble], body.noble [data-dir=homepage], body.noble [data-act=enterTarget], body.noble #autoIpscLabel, body.noble #clearAllBle { display: none; }
 body.nomic #voiceBtn, body.nomic #voiceText { display: none; }
 .qrcard { display: flex; gap: 14px; align-items: center; flex-shrink: 0; }
 .qrcard[hidden] { display: none; }
@@ -785,7 +785,13 @@ function buildCards() {
       toast(`${t.name}：已校正為「${SEQ_LABEL[TARGET_SEQ[t.kind]]}」`);
     });
     el.querySelector('.note').addEventListener('click', () => { t.note = ''; updateKindUi(t); });
-    el.querySelectorAll('[data-dir]').forEach(b => b.addEventListener('click', () => sendDirective(t, b.dataset.dir)));
+    el.querySelectorAll('[data-dir]').forEach(b => b.addEventListener('click', () => {
+      // View-only (iPad): no Bluetooth, so ◎ only clears this page's record of that target.
+      if (!navigator.bluetooth && b.dataset.dir === 'enter') {
+        clearTarget(t); renderSummary(); toast(`${t.name}：已清除這台 iPad 上的紀錄`); return;
+      }
+      sendDirective(t, b.dataset.dir);
+    }));
     el.querySelectorAll('[data-act=prev]').forEach(b => b.addEventListener('click', () => stepKind(t, 'left')));
     el.querySelectorAll('[data-act=next]').forEach(b => b.addEventListener('click', () => stepKind(t, 'right')));
     el.querySelectorAll('.strip .it').forEach(it => it.addEventListener('click', () => goToKind(t, Number(it.dataset.k))));
