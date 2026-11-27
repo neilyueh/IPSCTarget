@@ -100,7 +100,10 @@ tr.latest td { background: color-mix(in srgb, var(--last) 12%, transparent); }
   opacity: 0; pointer-events: none; transition: opacity .2s; z-index: 10; max-width: 90vw; }
 #toast.show { opacity: 1; }
 /* View-only browsers (iPad, or Chrome on a LAN address): no Bluetooth / microphone. */
-body.noble [data-act=ble], body.noble [data-dir=homepage], body.noble [data-act=enterTarget], body.noble #autoIpscLabel, body.noble #clearAllBle { display: none; }
+body.noble [data-act=ble], body.noble #autoIpscLabel { display: none; }
+/* Without the Mac relay (serve.py) the view-only page can't control the targets. */
+body.noble:not(.relay) [data-dir=homepage], body.noble:not(.relay) [data-act=enterTarget],
+body.noble:not(.relay) #clearAllBle { display: none; }
 body.nomic #voiceBtn, body.nomic #voiceText { display: none; }
 .qrcard { display: flex; gap: 14px; align-items: center; flex-shrink: 0; }
 .qrcard[hidden] { display: none; }
@@ -189,6 +192,7 @@ body.noble .qrcard { display: none; }
         <b>清除</b>：「全部清除」透過藍牙清每台已連接的靶機並清空電腦紀錄；靶卡下方的 ◎ 只清那一台。對靶上的 RESET 開一槍或用手機 App 按 RESET，對應那台的紀錄也會自動清空。<br>
         <b>計分</b>：Miss 扣 10 分；打在黑色遮蔽區 0 分（表格算在 Miss 欄）；打到人質每發扣 10 分（穿過人質又打到靶，兩者都算）。比賽模式每張靶取最佳 2 發，不足 2 發算 Miss。時間是第一發到最後一發（不含起始嗶聲）。<br>
         <b>換靶</b>：靶卡上方的 ◀ ▶ 依靶機順序切換全部 17 種靶，畫面和靶機一樣；有連藍牙時靶機一起換。在靶機或手機 App 換靶，網頁也會跟著換；對不上時按「校正」。計分只支援 IPSC 紙靶、Hard cover 1、2、人質靶、IPSC 雙靶，其他靶只顯示命中位置。<br>
+        <b>iPad</b>：掃下方 QR code 打開。iPad 上按的換靶、清除會轉給這台 Mac 用藍牙送出，所以 Mac 的這個網頁要開著。<br>
         每台的「縮放」要和該靶機畫面的 Zoom 一致，A/C/D 判定才會準。
       </p>
     </div>
@@ -786,17 +790,19 @@ function buildCards() {
     });
     el.querySelector('.note').addEventListener('click', () => { t.note = ''; updateKindUi(t); });
     el.querySelectorAll('[data-dir]').forEach(b => b.addEventListener('click', () => {
-      // View-only (iPad): no Bluetooth, so ◎ only clears this page's record of that target.
-      if (!navigator.bluetooth && b.dataset.dir === 'enter') {
-        clearTarget(t); renderSummary(); toast(`${t.name}：已清除這台 iPad 上的紀錄`); return;
-      }
-      sendDirective(t, b.dataset.dir);
+      if (navigator.bluetooth) { sendDirective(t, b.dataset.dir); return; }
+      // View-only (iPad): the Mac sends it over Bluetooth; failing that, ◎ only
+      // clears this page's record of that target.
+      remote(t, 'dir', b.dataset.dir, b.dataset.dir === 'enter' && (() => {
+        clearTarget(t); renderSummary(); return '只清了這台 iPad 上的紀錄';
+      }));
     }));
     el.querySelectorAll('[data-act=prev]').forEach(b => b.addEventListener('click', () => stepKind(t, 'left')));
     el.querySelectorAll('[data-act=next]').forEach(b => b.addEventListener('click', () => stepKind(t, 'right')));
     el.querySelectorAll('.strip .it').forEach(it => it.addEventListener('click', () => goToKind(t, Number(it.dataset.k))));
     el.querySelector('[data-act=ble]').addEventListener('click', () => bleConnect(t));
-    el.querySelector('[data-act=enterTarget]').addEventListener('click', () => enterTargetScreen(t));
+    el.querySelector('[data-act=enterTarget]').addEventListener('click', () =>
+      navigator.bluetooth ? enterTargetScreen(t) : remote(t, 'enterTarget'));
     el.querySelector('[data-act=wide]').addEventListener('click', () => { t.wide = !t.wide; el.classList.toggle('wide', t.wide); updateKindUi(t); });
     el.querySelector('[data-act=remove]').addEventListener('click', () => { removeTarget(t); toast(`已移除 ${t.name}`); });
     el.querySelector('.tsvg').addEventListener('click', ev => simulateShot(t, ev));
@@ -1095,6 +1101,11 @@ async function sendDirective(t, dir, quiet) {
 // Card ◀ ▶: with Bluetooth the target steps too and the page follows its broadcast;
 // without Bluetooth only the page changes.
 async function stepKind(t, dir) {
+  if (!navigator.bluetooth && relayOn) {
+    remote(t, 'dir', dir, () => { setKind(t, t.kind + (dir === 'right' ? 1 : -1));
+      return `網頁換成「${SEQ_LABEL[TARGET_SEQ[t.kind]]}」，靶機請自己切換`; });
+    return;
+  }
   if (t.moving) return;
   if (t.bleChar) { await sendDirective(t, dir); return; }
   setKind(t, t.kind + (dir === 'right' ? 1 : -1));
@@ -1104,7 +1115,13 @@ async function stepKind(t, dir) {
 // Target list click: with Bluetooth, press ◀ or ▶ on the target as many times as
 // needed (shortest way round); without it, only the page changes.
 async function goToKind(t, want) {
-  if (t.moving || want === t.kind) return;
+  if (want === t.kind) return;
+  if (!navigator.bluetooth && relayOn) {
+    remote(t, 'goto', want, () => { setKind(t, want);
+      return `網頁換成「${SEQ_LABEL[TARGET_SEQ[want]]}」，靶機請自己切換`; });
+    return;
+  }
+  if (t.moving) return;
   if (!t.bleChar) {
     setKind(t, want);
     toast(`${t.name}：網頁換成「${SEQ_LABEL[TARGET_SEQ[want]]}」（未連藍牙，靶機請自己切換）`);
@@ -1170,11 +1187,123 @@ async function autoIpsc() {
 }
 
 async function clearEverything() {
+  if (!navigator.bluetooth) {
+    // iPad: the Mac clears the targets; this page clears its own record either way.
+    const r = await remote(null, 'clearAll', null, () => { clearAllRecords(); return '只清了這台 iPad 上的紀錄'; });
+    if (r && r.ok) clearAllRecords();
+    return;
+  }
   const linked = targets.filter(t => t.bleChar);
   const results = await Promise.all(linked.map(t => sendDirective(t, 'enter', true)));
   clearAllRecords();
   const ok = results.filter(Boolean).length, missing = targets.length - ok;
-  toast(missing ? `已清除 ${ok} 台靶機；${missing} 台沒連藍牙，只清了電腦紀錄` : `已清除全部 ${ok} 台靶機`);
+  const msg = missing ? `已清除 ${ok} 台靶機；${missing} 台沒連藍牙，只清了電腦紀錄` : `已清除全部 ${ok} 台靶機`;
+  toast(msg);
+  return { ok: ok > 0 || !targets.length, msg };
+}
+
+// ---------- iPad → Mac command relay (see serve.py) ----------
+// The iPad has no Web Bluetooth. Its buttons go to serve.py; the page open in Chrome
+// on the Mac picks them up, sends them over Bluetooth and reports back.
+let relayOn = false;
+async function relayCheck() {
+  if (navigator.bluetooth || location.protocol !== 'http:') return;
+  try {
+    const r = await fetch('/relay/status', { cache: 'no-store' });
+    relayOn = r.ok;
+  } catch (e) { relayOn = false; }
+  document.body.classList.toggle('relay', relayOn);
+}
+
+// Sends one command through the Mac. fallback() runs when the Mac can't do it
+// (page closed, target not on Bluetooth) and returns what it did instead.
+// Resolves to { ok, msg, kind } once known.
+async function remote(t, act, arg, fallback) {
+  const who = t ? t.name + '：' : '';
+  const fail = msg => {
+    const extra = fallback ? fallback() : '';
+    if (fallback) renderSummary();
+    toast(who + msg + (extra ? '；' + extra : ''));
+    return { ok: false, msg };
+  };
+  if (!relayOn) return fail('這個網址不能轉給 Mac（請用 Mac 顯示的區網網址開）');
+  if (t && t.moving) { toast(who + '上一個指令還在執行，請稍等'); return { ok: false, msg: '正在切換中' }; }
+  let id;
+  try {
+    const r = await fetch('/relay/cmd', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ip: t ? t.ip : '', act, arg }) });
+    if (r.status === 503) return fail('Mac 上的網頁沒開（請在 Mac 的 Chrome 開 localhost:' + (location.port || 8765) + '）');
+    if (!r.ok) return fail('送到 Mac 失敗');
+    id = (await r.json()).id;
+  } catch (e) { return fail('連不到 Mac'); }
+  if (t) { t.moving = true; updateKindUi(t); }
+  toast(who + '已送到 Mac，執行中…');
+  try {
+    // Stepping through many targets takes a while (0.65 s a step), so wait up to 30 s.
+    for (let i = 0; i < 100; i++) {
+      await sleep(300);
+      let res;
+      try { res = await (await fetch('/relay/result?id=' + id, { cache: 'no-store' })).json(); } catch (e) { continue; }
+      if (!res.done) continue;
+      if (!res.ok) { if (t) { t.moving = false; updateKindUi(t); } return fail(res.msg); }
+      // The target broadcasts the change on Wi-Fi and this page follows it; in case
+      // that is missed, match the Mac's target too (and clear, without a Wi-Fi link).
+      if (t) {
+        if (act === 'dir' && arg === 'enter') { if (!t.on) clearTarget(t); }
+        else if (typeof res.kind === 'number' && res.kind !== t.kind) setKind(t, res.kind);
+        renderSummary();
+      }
+      toast(who + res.msg);
+      return res;
+    }
+  } finally { if (t) { t.moving = false; updateKindUi(t); } }
+  return fail('Mac 沒有回應');
+}
+
+// Mac side: pick up the iPad's commands and run them over Bluetooth.
+async function runRemote(c) {
+  const t = targets.find(x => x.ip === c.ip);
+  try {
+    if (c.act === 'clearAll') return await clearEverything();
+    if (!t) return { ok: false, msg: `Mac 上沒有 ${c.ip} 這台靶` };
+    if (!t.bleChar && !(await bleConnect(t, true))) return { ok: false, msg: 'Mac 沒連上這台的藍牙' };
+    if (t.moving) return { ok: false, msg: '正在切換中' };
+    if (c.act === 'dir' && ['enter', 'homepage', 'left', 'right'].includes(c.arg)) {
+      const ok = await sendDirective(t, c.arg, true);
+      return { ok, kind: t.kind, msg: !ok ? '靶機沒收到，請再按一次'
+        : { enter: '已清除', homepage: '回主選單' }[c.arg] || `現在是「${SEQ_LABEL[TARGET_SEQ[t.kind]]}」` };
+    }
+    if (c.act === 'goto' && Number.isInteger(c.arg) && c.arg >= 0 && c.arg < TARGET_SEQ.length) {
+      await goToKind(t, c.arg);
+      const ok = t.kind === c.arg;
+      return { ok, kind: t.kind, msg: ok ? `已切換到「${SEQ_LABEL[TARGET_SEQ[t.kind]]}」` : '切換中斷，請確認靶機畫面' };
+    }
+    if (c.act === 'enterTarget') {
+      const fail = await enterIpsc(t);
+      return { ok: !fail, kind: t.kind, msg: fail ? `「${fail}」沒成功，請確認靶機畫面` : '已進入 IPSC 紙靶' };
+    }
+    return { ok: false, msg: '不認得的指令' };
+  } catch (e) { return { ok: false, msg: 'Mac 執行失敗：' + e.message }; }
+}
+
+async function relayController() {
+  if (!navigator.bluetooth || location.protocol !== 'http:') return;
+  for (;;) {
+    let cmds = [];
+    try {
+      const r = await fetch('/relay/poll', { cache: 'no-store' });
+      if (r.status === 404) return;            // plain http.server: no relay
+      cmds = (await r.json()).cmds || [];
+    } catch (e) { await sleep(3000); continue; }
+    for (const c of cmds) {
+      if (c.act !== 'clearAll' && c.act !== 'goto') {
+        const t = targets.find(x => x.ip === c.ip);
+        if (t) toast(`iPad：${t.name}`);
+      }
+      runRemote(c).then(res => fetch('/relay/result', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: c.id, ...res }) }).catch(() => {}));
+    }
+  }
 }
 
 // ---------- Wire up ----------
@@ -1488,6 +1617,7 @@ function showQr(url) {
   qrShown = url;
 }
 showLanUrl(); setInterval(showLanUrl, 60000);
+relayCheck(); relayController();
 
 loadTargets();
 buildCards(); renderAll();

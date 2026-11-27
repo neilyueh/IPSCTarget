@@ -99,10 +99,10 @@
 
 ### 從 iPad 看
 
-用 `start.command` 或自動啟動開的網頁，上方會顯示 **📱 iPad：http://192.168.x.x:8765/**（這台 Mac 目前的區網 IP，點一下可複製）。iPad 連同一個 Wi-Fi，在 Safari 輸入這個網址就能看到彈著和分數。
+用 `start.command` 或自動啟動開的網頁，上方會顯示 **📱 iPad：http://192.168.x.x:8765/**（這台 Mac 目前的區網 IP，點一下可複製），右側下方也有這個網址的 **QR code**。iPad 連同一個 Wi-Fi，用相機掃 QR code，或在 Safari／Chrome 輸入這個網址，就能看到彈著和分數。
 
 - **Mac 自己請繼續用 `http://localhost:8765/`**：Chrome 只在 localhost（或 https）網址開放藍牙和麥克風，在 Mac 上打 `http://192.168.x.x:8765/` 會顯示「藍牙只能在 localhost 使用」。
-- iPad 上的 Safari **不支援網頁藍牙**，所以「自動進 IPSC 紙靶」、透過藍牙「全部清除」要在 Mac 的 Chrome 上操作（iPad 上這些按鈕會自動藏起來，每台靶顯示「只能看」）；語音「重來」在 iPad 上也不能用（http 網址拿不到麥克風）。
+- iPad 上所有瀏覽器（包括 Chrome）都**不支援網頁藍牙**。所以 iPad 上的 ◀ ▶ 換靶、◎ 清除、⌂、「進靶畫面」、「全部清除」會**轉給 Mac**：`serve.py` 收下指令，Mac 上開著的 Chrome 網頁（`localhost:8765`）用藍牙送給靶機，再把結果回報給 iPad。條件是 Mac 的 Chrome 要開著這個網頁、那台靶要在 Mac 上連好藍牙；做不到時 iPad 會說原因（例如「Mac 上的網頁沒開」），◀ ▶ 和 ◎ 則退回只改 iPad 自己的畫面。連藍牙本身（「藍牙」按鈕、「自動進 IPSC 紙靶」）只能在 Mac 上做。語音「重來」在 iPad 上不能用（http 網址拿不到麥克風）。
 - 靶機清單和設定是每個瀏覽器各自記的，iPad 第一次打開時會自動搜尋靶機，也可以手動加入靶機 IP。
 - Mac 的 IP 若變了（路由器重新分配），網頁上方顯示的網址會跟著更新；想固定的話，在路由器把這台 Mac 設成固定 IP。
 - 第一次若 macOS 問「是否允許 python3 接受連入連線」，請選「允許」。
